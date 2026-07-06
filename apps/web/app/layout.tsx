@@ -1,10 +1,8 @@
 import type { Metadata } from "next";
-import { GeistSans } from "geist/font/sans";
-import "./globals.css";
 
 export const metadata: Metadata = {
   title: "Argus",
-  description: "AI Investment Committee",
+  description: "AI Investment Syndicate — decentralized AI investment committee",
 };
 
 export default function RootLayout({
@@ -14,9 +12,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
-      <body className={GeistSans.className}>
-        {children}
-      </body>
+      <body>{children}</body>
     </html>
   );
 }
