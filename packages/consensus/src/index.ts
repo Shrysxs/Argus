@@ -1,18 +1,15 @@
-// @argus/consensus — Pure, deterministic, confidence-weighted vote aggregation (see AGENTS.md §6).
+/**
+ * @argus/consensus
+ *
+ * Pure, deterministic, confidence-weighted vote aggregation (AGENTS.md §6).
+ * Zero external dependencies — no network calls, no I/O.
+ */
 
-// Verify that shared types are importable from this package.
-import type {
-  AgentVote,
-  ConsensusResult,
-  VoteDirection,
-} from "@argus/shared-types";
+// Core engine
+export { computeConsensus, DISAGREEMENT_THRESHOLD } from "./engine.js";
 
-// Re-export the types that consumers of the consensus engine will need.
-export type { AgentVote, ConsensusResult, VoteDirection };
+// Re-export shared types that consumers of this package need,
+// so they don't have to add @argus/shared-types as a separate dependency.
+export type { AgentVote, ConsensusResult, VoteDirection } from "@argus/shared-types";
 
-// TODO: Implement the consensus engine: W_d = Σ(c_i for agents voting d),
-// Recommendation = argmax(W_d), Confidence = W_recommendation / Σ(W_d) × 100 (AGENTS.md §6).
-// TODO: Persist full vote breakdown (not just the winner) for explainability (AGENTS.md §6).
-// TODO: Add disagreement flag — surface when agents split near 50/50 (AGENTS.md §5.3).
-// TODO: Achieve 100% unit test coverage — this is the "trust math" (AGENTS.md §6).
-// NOTE: This module must have ZERO external dependencies and NEVER call a network API (AGENTS.md §6, §11).
+// TODO: Add reputation-weighted voting (v2) per AGENTS.md §6, Phase 3.
