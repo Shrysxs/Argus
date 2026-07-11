@@ -99,39 +99,15 @@ export interface AgentPersona {
 
 /**
  * The result of running the consensus engine over a set of agent votes.
- *
- * §6: confidence-weighted model with full vote breakdown for explainability.
+ * Output type per MATH.md §1.
  */
 export interface ConsensusResult {
-  /** The winning vote direction: argmax_d(W_d) (§6). */
   recommendation: VoteDirection;
-
-  /**
-   * Overall consensus confidence: W_recommendation / Σ(W_d) × 100 (§6).
-   * Range: 0–100.
-   */
   confidence: number;
-
-  /**
-   * Weighted score per vote direction: W_d = Σ(c_i for agents voting d) (§6).
-   * Persisted for explainability — lets UI reconstruct *why* a decision won.
-   */
-  weightsByDirection: Record<VoteDirection, number>;
-
-  /**
-   * Full individual agent votes (§6: "Persist the full vote breakdown,
-   * not just the winner").
-   */
+  breakdown: Record<VoteDirection, number>;
+  disagreement: boolean;
   agentVotes: AgentVote[];
-
-  /**
-   * Whether agents split heavily, e.g., near 50/50 weighted (§5.3).
-   * If true, the UI should surface this prominently instead of quietly
-   * picking a winner.
-   */
-  disagreementFlag: boolean;
-
-  // TODO: Add reputation-weighted voting fields in v2 (AGENTS.md §6, Phase 3).
+  // TODO: Add reputation-weighted voting fields in v2 (AGENT.md §6, Phase 3).
 }
 
 // ---------------------------------------------------------------------------
