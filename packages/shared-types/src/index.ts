@@ -1,20 +1,10 @@
 // @argus/shared-types — Cross-package TypeScript types for Argus.
-// All types are derived from AGENTS.md. Fields not clearly implied carry TODO comments.
 
 // ---------------------------------------------------------------------------
-// Vote Direction
+// Vote Direction — canonical set per SYNDICATE.md §3, MATH.md §1
 // ---------------------------------------------------------------------------
 
-/**
- * The direction an agent votes for a given asset.
- *
- * AGENTS.md §6 describes agents voting for a "decision d" and the consensus
- * picking argmax, but does not define the canonical set of directions.
- * Using a string alias for now so the consensus engine stays generic.
- */
-// TODO: Consider narrowing to a union type (e.g., "BUY" | "SELL" | "HOLD")
-// once the product decides on the canonical vote vocabulary (AGENTS.md §13).
-export type VoteDirection = string;
+export type VoteDirection = 'BUY' | 'SELL' | 'HOLD';
 
 // ---------------------------------------------------------------------------
 // Agent Types (§5.1, §5.2)
