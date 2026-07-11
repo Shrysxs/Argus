@@ -237,3 +237,56 @@ export interface LogFilter {
   // TODO: Add pagination (limit/offset or cursor) once log volume
   // makes unbounded queries impractical (AGENTS.md §8).
 }
+
+// ---------------------------------------------------------------------------
+// MATH.md §2 — Reputation Index
+// ---------------------------------------------------------------------------
+
+export interface HistoricalCall {
+  confidence: number;   // agent's stated confidence, normalized 0–1
+  correct: 0 | 1;      // whether the call was correct
+  ageInDays: number;    // how many days ago this call was made
+}
+
+// ---------------------------------------------------------------------------
+// MATH.md §3 — Signal Information Value
+// ---------------------------------------------------------------------------
+
+export interface SignalPriceParams {
+  breakdown: Record<VoteDirection, number>;
+  basePriceUsd: number;
+  gamma: number;           // ∈ [2, 3]
+  volatilityMultiplier: number;
+}
+
+// ---------------------------------------------------------------------------
+// MATH.md §4 — Auction Reserve (Kelly-derived)
+// ---------------------------------------------------------------------------
+
+export interface AuctionReserveParams {
+  winProbability: number;  // p — v1: consensus confidence as proxy
+  payoffOdds: number;      // b — (realized move) / (stop distance)
+  aumRef: number;          // reference notional, e.g. $100k
+}
+
+// ---------------------------------------------------------------------------
+// MATH.md §5 — Bonding Curve
+// ---------------------------------------------------------------------------
+
+export interface BondingCurveParams {
+  p0: number;              // base price, immutable at deploy
+  k: number;               // curve steepness, immutable at deploy
+  reputation: number;      // R_i(t) from §2, ∈ [0, 1]
+}
+
+// ---------------------------------------------------------------------------
+// MATH.md §6 — Vault Fee
+// ---------------------------------------------------------------------------
+
+export interface VaultFeeParams {
+  managementFeeRate: number;  // m — annualized, pro-rata per period
+  performanceFeeRate: number; // p — carry on new profit
+  aum: number;                // current AUM
+  currentValue: number;       // V_t
+  highWaterMark: number;      // HWM — updates only upward
+}
