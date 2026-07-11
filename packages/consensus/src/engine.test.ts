@@ -1,28 +1,10 @@
-/**
- * Unit tests for the Argus consensus engine.
- *
- * Uses node:test (built into Node ≥18) — zero external test dependencies,
- * consistent with the "zero external dependencies" constraint (AGENTS.md §6).
- *
- * Run with: npm test (from packages/consensus)
- */
-
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
 
-import { computeConsensus, DISAGREEMENT_THRESHOLD } from "./engine.js";
+import { computeConsensus, DEFAULT_DISAGREEMENT_MARGIN } from "./engine.js";
 import type { AgentVote } from "@argus/shared-types";
 
-// ---------------------------------------------------------------------------
-// Helpers
-// ---------------------------------------------------------------------------
-
-/** Build a minimal valid AgentVote for test use. */
-function makeVote(
-  agentId: string,
-  vote: string,
-  confidence: number
-): AgentVote {
+function makeVote(agentId: string, vote: 'BUY' | 'SELL' | 'HOLD', confidence: number): AgentVote {
   return {
     agentId,
     vote,
@@ -35,7 +17,7 @@ function makeVote(
 }
 
 // ---------------------------------------------------------------------------
-// Test: Clear single-winner case
+// Clear single-winner
 // ---------------------------------------------------------------------------
 
 describe("computeConsensus — clear single winner", () => {
@@ -50,33 +32,25 @@ describe("computeConsensus — clear single winner", () => {
 
     const result = computeConsensus(votes);
 
-    // W_BUY = 80 + 70 + 60 = 210
-    // W_HOLD = 50
-    // W_SELL = 40
-    // total = 300
-    // confidence = 210/300 × 100 = 70
+    // W_BUY = 210, W_HOLD = 50, W_SELL = 40, total = 300
     assert.equal(result.recommendation, "BUY");
-    assert.ok(
-      Math.abs(result.confidence - 70) < 0.001,
-      `Expected confidence ~70, got ${result.confidence}`
-    );
-    assert.equal(result.weightsByDirection["BUY"], 210);
-    assert.equal(result.weightsByDirection["HOLD"], 50);
-    assert.equal(result.weightsByDirection["SELL"], 40);
-
-    // 70% > 55% — no disagreement
-    assert.equal(result.disagreementFlag, false);
+    assert.ok(Math.abs(result.confidence - 70) < 0.001);
+    assert.equal(result.breakdown["BUY"], 210);
+    assert.equal(result.breakdown["HOLD"], 50);
+    assert.equal(result.breakdown["SELL"], 40);
+    // gap = 210 - 50 = 160, margin = 0.10 * 300 = 30, 160 > 30 → no disagreement
+    assert.equal(result.disagreement, false);
   });
 
   it("preserves the original votes array in the result", () => {
     const votes = [makeVote("a", "BUY", 90), makeVote("b", "SELL", 10)];
     const result = computeConsensus(votes);
-    assert.equal(result.agentVotes, votes); // same reference
+    assert.equal(result.agentVotes, votes);
   });
 });
 
 // ---------------------------------------------------------------------------
-// Test: All 5 agents agree
+// Unanimous agreement
 // ---------------------------------------------------------------------------
 
 describe("computeConsensus — unanimous agreement", () => {
@@ -92,110 +66,119 @@ describe("computeConsensus — unanimous agreement", () => {
     const result = computeConsensus(votes);
 
     assert.equal(result.recommendation, "BUY");
-    assert.ok(
-      Math.abs(result.confidence - 100) < 0.001,
-      `Expected 100% confidence, got ${result.confidence}`
-    );
-    assert.equal(result.disagreementFlag, false);
-    // Only one direction present in breakdown
-    assert.deepEqual(Object.keys(result.weightsByDirection), ["BUY"]);
+    assert.ok(Math.abs(result.confidence - 100) < 0.001);
+    // Only one direction → second-highest = 0, gap = total, always > margin → no disagreement
+    assert.equal(result.disagreement, false);
+    assert.deepEqual(Object.keys(result.breakdown), ["BUY"]);
   });
 });
 
 // ---------------------------------------------------------------------------
-// Test: Near-tie — should trigger disagreement flag
+// Disagreement flag — MATH.md: top two W_d within 10% of total weight
 // ---------------------------------------------------------------------------
 
-describe("computeConsensus — near-tie (disagreement flag)", () => {
-  it("sets disagreementFlag when winner share is at the threshold boundary (exactly 55%)", () => {
-    // W_BUY = 55, W_SELL = 45 → winner share = 55/100 = 0.55 → flag
+describe("computeConsensus — disagreement flag (MATH.md §1)", () => {
+  it("flags when gap between top two is less than margin * total", () => {
+    // W_BUY = 50, W_SELL = 45, total = 95
+    // gap = 5, margin = 0.10 * 95 = 9.5, 5 < 9.5 → flag
+    const votes = [makeVote("a", "BUY", 50), makeVote("b", "SELL", 45)];
+    const result = computeConsensus(votes);
+
+    assert.equal(result.recommendation, "BUY");
+    assert.equal(result.disagreement, true);
+  });
+
+  it("does NOT flag when gap exceeds margin * total", () => {
+    // W_BUY = 70, W_SELL = 30, total = 100
+    // gap = 40, margin = 10, 40 > 10 → no flag
+    const votes = [makeVote("a", "BUY", 70), makeVote("b", "SELL", 30)];
+    const result = computeConsensus(votes);
+
+    assert.equal(result.recommendation, "BUY");
+    assert.equal(result.disagreement, false);
+  });
+
+  it("flags on 3-way split when top two are close", () => {
+    // W_BUY = 40, W_SELL = 35, W_HOLD = 25, total = 100
+    // gap = 40 - 35 = 5, margin = 10, 5 < 10 → flag
     const votes = [
-      makeVote("a", "BUY", 55),
-      makeVote("b", "SELL", 45),
+      makeVote("a", "BUY", 40),
+      makeVote("b", "SELL", 35),
+      makeVote("c", "HOLD", 25),
     ];
     const result = computeConsensus(votes);
 
     assert.equal(result.recommendation, "BUY");
-    // confidence = 55/100 × 100 = 55
-    assert.ok(Math.abs(result.confidence - 55) < 0.001);
-    // Exactly at threshold → disagreementFlag = true (≤ threshold)
-    assert.equal(result.disagreementFlag, true);
+    assert.equal(result.disagreement, true);
   });
 
-  it("sets disagreementFlag on a close 3-way split where winner share ≤ 55%", () => {
-    // W_BUY = 50, W_HOLD = 30, W_SELL = 25 → total = 105
-    // winner share = 50/105 ≈ 0.476 → flag
+  it("does NOT flag on 3-way split when winner is dominant", () => {
+    // W_BUY = 60, W_SELL = 25, W_HOLD = 15, total = 100
+    // gap = 60 - 25 = 35, margin = 10, 35 > 10 → no flag
     const votes = [
-      makeVote("a", "BUY", 50),
-      makeVote("b", "HOLD", 30),
-      makeVote("c", "SELL", 25),
+      makeVote("a", "BUY", 60),
+      makeVote("b", "SELL", 25),
+      makeVote("c", "HOLD", 15),
     ];
     const result = computeConsensus(votes);
 
     assert.equal(result.recommendation, "BUY");
-    assert.equal(result.disagreementFlag, true);
+    assert.equal(result.disagreement, false);
   });
 
-  it("does NOT set disagreementFlag when winner share is above 55%", () => {
-    // W_BUY = 56, W_SELL = 44 → winner share = 0.56 → no flag
-    const votes = [
-      makeVote("a", "BUY", 56),
-      makeVote("b", "SELL", 44),
-    ];
-    const result = computeConsensus(votes);
+  it("accepts a custom disagreement margin via config", () => {
+    // W_BUY = 60, W_SELL = 40, total = 100, gap = 20
+    // default margin 10% → no flag. Custom margin 25% → 20 < 25 → flag
+    const votes = [makeVote("a", "BUY", 60), makeVote("b", "SELL", 40)];
 
-    assert.equal(result.recommendation, "BUY");
-    assert.equal(result.disagreementFlag, false);
+    const defaultResult = computeConsensus(votes);
+    assert.equal(defaultResult.disagreement, false);
+
+    const customResult = computeConsensus(votes, { disagreementMargin: 0.25 });
+    assert.equal(customResult.disagreement, true);
   });
 
-  it("DISAGREEMENT_THRESHOLD constant is 0.55", () => {
-    assert.equal(DISAGREEMENT_THRESHOLD, 0.55);
+  it("DEFAULT_DISAGREEMENT_MARGIN is 0.10", () => {
+    assert.equal(DEFAULT_DISAGREEMENT_MARGIN, 0.10);
   });
 });
 
 // ---------------------------------------------------------------------------
-// Test: Edge cases
+// Edge cases
 // ---------------------------------------------------------------------------
 
 describe("computeConsensus — edge cases", () => {
-  it("single agent voting alone — confidence is 100%, no disagreement", () => {
+  it("single agent — confidence is 100%, no disagreement", () => {
     const votes = [makeVote("solo", "HOLD", 65)];
     const result = computeConsensus(votes);
 
     assert.equal(result.recommendation, "HOLD");
     assert.ok(Math.abs(result.confidence - 100) < 0.001);
-    assert.equal(result.disagreementFlag, false);
-    assert.equal(result.weightsByDirection["HOLD"], 65);
+    assert.equal(result.disagreement, false);
+    assert.equal(result.breakdown["HOLD"], 65);
   });
 
-  it("all equal confidence scores — first direction in iteration order wins ties", () => {
-    // All same confidence: W_BUY = 50, W_SELL = 50
-    // Tie-break: first direction encountered in iteration wins.
-    // BUY is inserted first (votes[0]), so BUY wins.
-    const votes = [
-      makeVote("a", "BUY", 50),
-      makeVote("b", "SELL", 50),
-    ];
+  it("exact tie — first direction encountered wins, disagreement flagged", () => {
+    const votes = [makeVote("a", "BUY", 50), makeVote("b", "SELL", 50)];
     const result = computeConsensus(votes);
 
     assert.equal(result.recommendation, "BUY");
-    // Confidence = 50/100 × 100 = 50 — maximum disagreement
     assert.ok(Math.abs(result.confidence - 50) < 0.001);
-    assert.equal(result.disagreementFlag, true);
+    // gap = 0, margin = 10, 0 < 10 → flag
+    assert.equal(result.disagreement, true);
   });
 
   it("accumulates multiple agents voting the same direction", () => {
     const votes = [
       makeVote("a", "BUY", 30),
       makeVote("b", "SELL", 20),
-      makeVote("c", "BUY", 40), // second BUY vote
+      makeVote("c", "BUY", 40),
     ];
     const result = computeConsensus(votes);
 
-    // W_BUY = 70, W_SELL = 20, total = 90
     assert.equal(result.recommendation, "BUY");
-    assert.equal(result.weightsByDirection["BUY"], 70);
-    assert.equal(result.weightsByDirection["SELL"], 20);
+    assert.equal(result.breakdown["BUY"], 70);
+    assert.equal(result.breakdown["SELL"], 20);
     assert.ok(Math.abs(result.confidence - (70 / 90) * 100) < 0.001);
   });
 
@@ -206,46 +189,26 @@ describe("computeConsensus — edge cases", () => {
         assert.ok(err instanceof RangeError);
         assert.ok((err as RangeError).message.includes("must not be empty"));
         return true;
-      }
+      },
     );
   });
 
-  it("throws RangeError when a confidence score is below 0", () => {
-    assert.throws(
-      () => computeConsensus([makeVote("a", "BUY", -1)]),
-      RangeError
-    );
+  it("throws RangeError when confidence is below 0", () => {
+    assert.throws(() => computeConsensus([makeVote("a", "BUY", -1)]), RangeError);
   });
 
-  it("throws RangeError when a confidence score is above 100", () => {
-    assert.throws(
-      () => computeConsensus([makeVote("a", "BUY", 101)]),
-      RangeError
-    );
+  it("throws RangeError when confidence is above 100", () => {
+    assert.throws(() => computeConsensus([makeVote("a", "BUY", 101)]), RangeError);
   });
 
   it("throws RangeError when all confidence scores are 0", () => {
     assert.throws(
-      () =>
-        computeConsensus([
-          makeVote("a", "BUY", 0),
-          makeVote("b", "SELL", 0),
-        ]),
+      () => computeConsensus([makeVote("a", "BUY", 0), makeVote("b", "SELL", 0)]),
       (err: unknown) => {
         assert.ok(err instanceof RangeError);
-        assert.ok(
-          (err as RangeError).message.includes("total weighted sum is 0")
-        );
+        assert.ok((err as RangeError).message.includes("total weighted sum is 0"));
         return true;
-      }
-    );
-  });
-
-  it("confidence of exactly 0 per agent is valid input (caught by zero-total guard)", () => {
-    // Single agent with confidence 0 → total = 0 → throws
-    assert.throws(
-      () => computeConsensus([makeVote("a", "BUY", 0)]),
-      RangeError
+      },
     );
   });
 });
