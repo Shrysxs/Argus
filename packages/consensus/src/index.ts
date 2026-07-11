@@ -1,15 +1,33 @@
-/**
- * @argus/consensus
- *
- * Pure, deterministic, confidence-weighted vote aggregation (AGENTS.md §6).
- * Zero external dependencies — no network calls, no I/O.
- */
+// @argus/consensus — Pure, deterministic math for Argus.
+// Implements MATH.md §1–§6. Zero external dependencies.
 
-// Core engine
-export { computeConsensus, DISAGREEMENT_THRESHOLD } from "./engine.js";
+// §1 — Consensus Engine
+export { computeConsensus, DEFAULT_DISAGREEMENT_MARGIN } from "./engine.js";
+export type { ConsensusConfig } from "./engine.js";
 
-// Re-export shared types that consumers of this package need,
-// so they don't have to add @argus/shared-types as a separate dependency.
-export type { AgentVote, ConsensusResult, VoteDirection } from "@argus/shared-types";
+// §2 — Reputation Index
+export { computeReputation, DEFAULT_LAMBDA } from "./reputation.js";
 
-// TODO: Add reputation-weighted voting (v2) per AGENTS.md §6, Phase 3.
+// §3 — Signal Information Value (entropy pricing)
+export { computeEntropy, computeInformationValue, computeSignalPrice, H_MAX } from "./entropy.js";
+
+// §4 — Auction Reserve (Kelly-derived)
+export { computeKellyFraction, computeAuctionReserve } from "./kelly.js";
+
+// §5 — Bonding Curve
+export { computeBondingPrice } from "./bonding.js";
+
+// §6 — Vault Fee
+export { computeVaultFee } from "./vault.js";
+
+// Re-export shared types consumers need
+export type {
+  AgentVote,
+  ConsensusResult,
+  VoteDirection,
+  HistoricalCall,
+  SignalPriceParams,
+  AuctionReserveParams,
+  BondingCurveParams,
+  VaultFeeParams,
+} from "@argus/shared-types";
