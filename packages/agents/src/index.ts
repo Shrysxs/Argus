@@ -11,6 +11,7 @@ import type {
 export type { AgentPersona, AgentVote, MarketDataSnapshot };
 
 // TODO: Create versioned prompt files for each agent persona (agents/<name>/v1.md) per AGENTS.md §5.2.
+// TODO: Replace mocked MarketDataSnapshot input with @argus/data-layer.fetchSnapshot() — BACKEND.md integration step.
 // TODO: Build agent runner that calls LLM providers with per-agent framework prompts, enforcing
 // JSON-schema-constrained structured output (AGENTS.md §5.2).
 // TODO: Implement multi-provider support (not just failover) per AGENTS.md §5.2.
