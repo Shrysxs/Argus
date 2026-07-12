@@ -10,3 +10,11 @@ export class DataFetchError extends Error {
     if (cause) this.cause = cause;
   }
 }
+
+/** Thrown when a fetcher's provider hasn't been selected/implemented yet. */
+export class NotImplementedError extends DataFetchError {
+  constructor(source: string) {
+    super(source, "provider not yet implemented");
+    this.name = "NotImplementedError";
+  }
+}
