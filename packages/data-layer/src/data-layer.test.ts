@@ -2,11 +2,14 @@ import { describe, it, beforeEach } from "node:test";
 import assert from "node:assert/strict";
 
 import { fetchPrice } from "./fetchers/price.js";
+import { fetchPriceFallback } from "./fetchers/price-fallback.js";
 import { fetchSentiment } from "./fetchers/sentiment.js";
+import { fetchSentimentFallback } from "./fetchers/sentiment-fallback.js";
+import { fetchOnchainMetrics } from "./fetchers/onchain-metrics.js";
 import { fetchSnapshot, snapshotCache } from "./snapshot.js";
 import { sha256 } from "./hash.js";
 import { TtlCache } from "./cache.js";
-import { DataFetchError } from "./errors.js";
+import { DataFetchError, NotImplementedError } from "./errors.js";
 
 // ---------------------------------------------------------------------------
 // Mock helpers
@@ -40,7 +43,7 @@ const MOCK_FNG_RESPONSE = {
 };
 
 // ---------------------------------------------------------------------------
-// sha256
+// sha256 — canonical serialization
 // ---------------------------------------------------------------------------
 
 describe("sha256", () => {
@@ -54,6 +57,24 @@ describe("sha256", () => {
 
   it("produces different hashes for different inputs", () => {
     assert.notEqual(sha256({ a: 1 }), sha256({ a: 2 }));
+  });
+
+  it("produces identical hashes regardless of key insertion order", () => {
+    const h1 = sha256({ b: 2, a: 1, c: 3 });
+    const h2 = sha256({ a: 1, c: 3, b: 2 });
+    assert.equal(h1, h2);
+  });
+
+  it("canonicalizes nested objects recursively", () => {
+    const h1 = sha256({ outer: { z: 1, a: 2 }, x: 0 });
+    const h2 = sha256({ x: 0, outer: { a: 2, z: 1 } });
+    assert.equal(h1, h2);
+  });
+
+  it("preserves array order (arrays are not sorted)", () => {
+    const h1 = sha256({ arr: [1, 2, 3] });
+    const h2 = sha256({ arr: [3, 2, 1] });
+    assert.notEqual(h1, h2);
   });
 });
 
@@ -69,7 +90,7 @@ describe("TtlCache", () => {
   });
 
   it("returns undefined after TTL expires", async () => {
-    const cache = new TtlCache<string>(1); // 1ms TTL
+    const cache = new TtlCache<string>(1);
     cache.set("k", "v");
     await new Promise((r) => setTimeout(r, 10));
     assert.equal(cache.get("k"), undefined);
@@ -102,7 +123,7 @@ describe("fetchPrice", () => {
         assert.equal(err.source, "coingecko");
         assert.match(err.message, /network request failed/);
         return true;
-      }
+      },
     );
   });
 
@@ -113,19 +134,18 @@ describe("fetchPrice", () => {
         assert.ok(err instanceof DataFetchError);
         assert.match(err.message, /429/);
         return true;
-      }
+      },
     );
   });
 
   it("throws DataFetchError when coin id is not in response", async () => {
-    // CoinGecko returns {} for unknown ids instead of a 4xx
     await assert.rejects(
       () => fetchPrice("notarealcoin", mockFetch({})),
       (err: unknown) => {
         assert.ok(err instanceof DataFetchError);
         assert.match(err.message, /no data returned/);
         return true;
-      }
+      },
     );
   });
 });
@@ -148,63 +168,107 @@ describe("fetchSentiment", () => {
         assert.ok(err instanceof DataFetchError);
         assert.equal(err.source, "alternative.me/fng");
         return true;
-      }
+      },
     );
   });
 
   it("throws DataFetchError when data array is missing", async () => {
     await assert.rejects(
       () => fetchSentiment(mockFetch({ name: "Fear and Greed Index" })),
-      DataFetchError
+      DataFetchError,
     );
   });
 });
 
 // ---------------------------------------------------------------------------
-// fetchSnapshot — integration of price + sentiment + hashing + cache
+// Stub fetchers — NotImplementedError
+// ---------------------------------------------------------------------------
+
+describe("stub fetchers", () => {
+  it("fetchOnchainMetrics throws NotImplementedError", async () => {
+    await assert.rejects(
+      () => fetchOnchainMetrics("bitcoin"),
+      (err: unknown) => {
+        assert.ok(err instanceof NotImplementedError);
+        assert.ok(err instanceof DataFetchError);
+        assert.equal(err.source, "onchain-metrics");
+        return true;
+      },
+    );
+  });
+
+  it("fetchPriceFallback throws NotImplementedError", async () => {
+    await assert.rejects(
+      () => fetchPriceFallback("bitcoin"),
+      (err: unknown) => {
+        assert.ok(err instanceof NotImplementedError);
+        assert.equal(err.source, "price-fallback");
+        return true;
+      },
+    );
+  });
+
+  it("fetchSentimentFallback throws NotImplementedError", async () => {
+    await assert.rejects(
+      () => fetchSentimentFallback(),
+      (err: unknown) => {
+        assert.ok(err instanceof NotImplementedError);
+        assert.equal(err.source, "sentiment-fallback");
+        return true;
+      },
+    );
+  });
+});
+
+// ---------------------------------------------------------------------------
+// fetchSnapshot — integration
 // ---------------------------------------------------------------------------
 
 describe("fetchSnapshot", () => {
-  // Clear the module-level cache between tests
   beforeEach(() => snapshotCache.delete("bitcoin"));
 
   function mockBoth(): typeof fetch {
-    return (url: string | URL | Request, ...rest: Parameters<typeof fetch>[1][]) => {
+    return (url: string | URL | Request) => {
       const urlStr = url.toString();
       if (urlStr.includes("coingecko")) {
-        return mockFetch(MOCK_PRICE_RESPONSE)(url, ...rest);
+        return mockFetch(MOCK_PRICE_RESPONSE)(url);
       }
-      return mockFetch(MOCK_FNG_RESPONSE)(url, ...rest);
+      return mockFetch(MOCK_FNG_RESPONSE)(url);
     };
   }
 
-  it("returns a snapshot with a stable SHA-256 hash", async () => {
+  it("returns a snapshot with a canonical SHA-256 hash", async () => {
     const snapshot = await fetchSnapshot("bitcoin", mockBoth());
     assert.equal(snapshot.asset, "bitcoin");
     assert.match(snapshot.hash, /^[0-9a-f]{64}$/);
+    // On-chain metrics not available yet — only price + sentiment sources
     assert.deepEqual(snapshot.sources, ["coingecko", "alternative.me/fng"]);
     assert.ok(snapshot.snapshotId.length > 0);
   });
 
-  it("returns the exact same object on a cache hit (no second fetch)", async () => {
-    const first = await fetchSnapshot("bitcoin", mockBoth());
-
-    // Second call uses a fetch that always fails — proves the cache was hit
-    const second = await fetchSnapshot("bitcoin", failingFetch());
-    assert.equal(first, second); // same reference
+  it("hash is canonical (recomputing from data matches)", async () => {
+    const snapshot = await fetchSnapshot("bitcoin", mockBoth());
+    const recomputed = sha256(snapshot.data);
+    assert.equal(snapshot.hash, recomputed);
   });
 
-  it("hashes are deterministic for identical data payloads", async () => {
-    // Build a snapshot manually and verify the hash matches what sha256 would produce
-    const snapshot = await fetchSnapshot("bitcoin", mockBoth());
-    const expectedHash = sha256(snapshot.data);
-    assert.equal(snapshot.hash, expectedHash);
+  it("returns the exact same object on a cache hit (no second fetch)", async () => {
+    const first = await fetchSnapshot("bitcoin", mockBoth());
+    const second = await fetchSnapshot("bitcoin", failingFetch());
+    assert.equal(first, second);
   });
 
   it("throws DataFetchError when the price fetch fails", async () => {
     await assert.rejects(
       () => fetchSnapshot("bitcoin", failingFetch("price api down")),
-      DataFetchError
+      DataFetchError,
     );
+  });
+
+  it("gracefully degrades when on-chain metrics are not implemented", async () => {
+    const snapshot = await fetchSnapshot("bitcoin", mockBoth());
+    // onchainMetrics should not be in data since it's NotImplemented
+    assert.equal((snapshot.data as Record<string, unknown>).onchainMetrics, undefined);
+    assert.ok(!snapshot.sources.includes("onchain-metrics"));
   });
 });
