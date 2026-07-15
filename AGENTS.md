@@ -15,6 +15,23 @@ This file is written to be read by both humans (you, contributors) and coding ag
 
 ---
 
+## 0.5 Documentation Map
+
+This file is the constitution — cross-cutting principles, architecture shape, roadmap. Domain specifics live in their own files so an AI agent working on one part of the stack doesn't need the whole system in context. Every doc below references shared types instead of redefining them, and lists what it owns vs. what it must never touch.
+
+| Doc | Owns | Do not edit without reading |
+|---|---|---|
+| [`FRONTEND.md`](./FRONTEND.md) | `apps/web` | `ONCHAIN.md` (wallet/signing contract), `BACKEND.md` (API shape) |
+| [`BACKEND.md`](./BACKEND.md) | API/orchestrator layer | `SYNDICATE.md`, `DATA.md`, `MATH.md`, `ONCHAIN.md` |
+| [`ONCHAIN.md`](./ONCHAIN.md) | `contracts/`, `packages/chain-adapters` | `MATH.md` (any formula a contract enforces must match it exactly) |
+| [`MATH.md`](./MATH.md) | `packages/consensus`, all pricing formulas | Nothing — this is the source of truth other docs must match |
+| [`SYNDICATE.md`](./SYNDICATE.md) | `packages/agents` | `MATH.md` (vote schema the consensus engine expects) |
+| [`DATA.md`](./DATA.md) | `packages/data-layer` | `MATH.md` (snapshot hash format) |
+
+Shared types live in `packages/shared-types` and are the actual contract between all of these — if a doc's example type drifts from that package, the package wins and the doc needs updating.
+
+---
+
 ## 1. Product Vision
 
 Argus is an on-chain **AI investment committee**. Instead of `User → single LLM → trade`, a user gets a **syndicate of specialized agents** that independently analyze an asset using distinct, non-overlapping frameworks (value, momentum, macro, on-chain, risk), vote with a confidence score, reach a weighted consensus, and permanently seal that consensus on-chain.
