@@ -1,6 +1,6 @@
 <div align="center">
 
-# 🦉 Argus
+# Argus
 
 ### The AI Investment Syndicate.
 
@@ -10,15 +10,23 @@
 
 ---
 
-Real funds don't trust a single analyst. They convene a committee.
+Argus is a syndicate of specialized AI agents — value, momentum, macro, on-chain, and risk — that independently analyze an asset, vote with a confidence score, and reach a weighted consensus. Every decision, and the data behind it, is permanently recorded on-chain. No black box, no single point of failure, no trusting one model's vibes.
 
-**Argus** brings that discipline to crypto — a syndicate of specialized AI agents, each reasoning from a different school of thought, debating an asset until they reach consensus. Every vote, every piece of reasoning, every decision: permanently recorded on-chain. No black box. No single point of failure. No trusting a single model's vibes.
-
-> Five minds. One verdict. Zero trust required.
+Originally built and won at Monad Blitz Pune as *Penguin Protocol*. This is the production build.
 
 ---
 
-### Coming soon.
+### Status
+
+In active development. Core decision engine is built and tested. Not yet live.
+
+---
+
+### Stack
+
+Next.js · Monad (testnet) · Solidity · Multi-model AI syndicate
+
+---
 
 <div align="center">
 
