@@ -1,12 +1,11 @@
 import Link from "next/link";
 import { AGENT_ROSTER } from "@/lib/agents";
+import { Header } from "@/components/header";
 
 export default function LandingPage() {
   return (
     <div className="flex min-h-screen flex-col">
-      <header className="flex items-center justify-between px-6 py-4 md:px-10">
-        <span className="text-lg font-semibold tracking-tight">Argus</span>
-      </header>
+      <Header />
 
       <main className="flex flex-1 flex-col items-center justify-center px-6 pb-20 text-center">
         {/* Hero */}

@@ -1,10 +1,11 @@
 "use client";
 
-import { useState, useCallback } from "react";
-import Link from "next/link";
+import { useState, useCallback, useEffect } from "react";
+import { useRouter } from "next/navigation";
 import type { ConsensusResult } from "@argus/shared-types";
 import { analyzeAsset } from "@/lib/api";
 import { AnalyzePanel } from "./analyze-panel";
+import { Header } from "@/components/header";
 
 const ASSETS = ["BTC", "ETH", "SOL"] as const;
 
@@ -15,9 +16,27 @@ type PanelState =
   | { status: "success"; result: ConsensusResult };
 
 export default function SyndicatePage() {
+  const router = useRouter();
   const [selectedAsset, setSelectedAsset] = useState<string>(ASSETS[0]);
   const [panelState, setPanelState] = useState<PanelState>({ status: "idle" });
+  const [authChecking, setAuthChecking] = useState(true);
   const isLoading = panelState.status === "loading";
+
+  useEffect(() => {
+    async function checkAuth() {
+      try {
+        const res = await fetch("/api/auth/me");
+        if (!res.ok) {
+          router.push("/login");
+          return;
+        }
+        setAuthChecking(false);
+      } catch {
+        router.push("/login");
+      }
+    }
+    checkAuth();
+  }, [router]);
 
   const handleAnalyze = useCallback(async () => {
     setPanelState({ status: "loading" });
@@ -34,16 +53,41 @@ export default function SyndicatePage() {
     }
   }, [selectedAsset]);
 
+  if (authChecking) {
+    return (
+      <div className="flex min-h-screen flex-col">
+        <Header />
+        <main className="flex flex-1 items-center justify-center">
+          <div className="flex items-center gap-2 text-sm text-muted-foreground">
+            <svg
+              className="h-4 w-4 animate-spin text-[var(--accent-glow)]"
+              viewBox="0 0 24 24"
+              fill="none"
+            >
+              <circle
+                className="opacity-25"
+                cx="12"
+                cy="12"
+                r="10"
+                stroke="currentColor"
+                strokeWidth="4"
+              />
+              <path
+                className="opacity-75"
+                fill="currentColor"
+                d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"
+              />
+            </svg>
+            Verifying session…
+          </div>
+        </main>
+      </div>
+    );
+  }
+
   return (
     <div className="flex min-h-screen flex-col">
-      <header className="flex items-center justify-between px-6 py-4 md:px-10">
-        <Link
-          href="/"
-          className="text-lg font-semibold tracking-tight transition-opacity hover:opacity-70"
-        >
-          Argus
-        </Link>
-      </header>
+      <Header />
 
       <main className="flex flex-1 flex-col px-6 pb-12 md:px-10">
         {/* Controls */}
