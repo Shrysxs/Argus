@@ -21,10 +21,9 @@ Roster is config, not code. Each agent is defined as:
 interface AgentPersona {
   id: string;
   name: string;
-  promptPath: string;      // packages/agents/prompts/{id}/v{n}.md
-  promptVersion: number;
-  dataDependencies: MarketDataField[];
-  modelPreference: ModelId;
+  frameworkPromptRef: string; // path relative to packages/agents, e.g. "value-hunter/v1.md"
+  dataDependencies: string[];
+  modelPreference: string;
 }
 ```
 
@@ -48,11 +47,14 @@ Every agent call must return, via schema-constrained generation (not best-effort
 interface AgentVote {
   agentId: string;
   vote: 'BUY' | 'SELL' | 'HOLD';
-  confidence: number;       // 1–100
+  confidence: number;       // 0–100
   reasoning: string;
-  dataPointsCited: string[]; // which MarketDataSnapshot fields it actually used
+  dataPointsCited: string[]; // human-readable references cited (e.g. "RSI(14) = 72.3")
+  promptVersion: string;   // e.g. "value-hunter/v1"
+  modelUsed: string;       // e.g. "llama-3.3-70b-versatile"
 }
 ```
+
 
 Reject and retry on schema mismatch. Never fall back to regex-parsing free text — if structured output isn't available from a provider for a given call, that call fails loud and the orchestrator marks that agent as non-responsive for the round (see `BACKEND.md` for how partial-response rounds are surfaced).
 

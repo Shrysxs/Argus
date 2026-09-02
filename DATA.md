@@ -21,11 +21,15 @@ Every fetch that feeds a decision produces a `MarketDataSnapshot`:
 
 ```ts
 interface MarketDataSnapshot {
-  fetchedAt: number;
-  fields: Record<string, number | string>;
-  hash: string; // sha256 of the canonically-serialized fields
+  snapshotId: string;
+  asset: string;
+  timestamp: number;
+  hash: string;                // sha256 of the canonically-serialized data
+  data: Record<string, unknown>;
+  sources: string[];
 }
 ```
+
 
 The hash gets recorded on-chain alongside the decision (`ONCHAIN.md` §2) so any third party can pull the same raw values and reproduce the exact hash — that's the actual verifiability claim of the product, don't let this drift into a formality nobody checks.
 

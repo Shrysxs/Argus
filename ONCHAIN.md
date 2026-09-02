@@ -32,9 +32,9 @@ Minimal, record-only, never custodies funds (`AGENT.md` §9). Extends the hackat
 event DecisionRecorded(
     string asset,
     string decision,
-    uint256 confidence,
-    bytes32 dataSnapshotHash,   // ties to DATA.md §2
-    uint256 promptVersionHash,  // ties to SYNDICATE.md §2
+    uint256 confidence,         // basis points (0–10000, where 10000 = 100.00%)
+    bytes32 dataSnapshotHash,   // sha256 of MarketDataSnapshot (ties to DATA.md §2)
+    bytes32 promptVersionHash,  // sha256 of agent prompt versions (ties to SYNDICATE.md §2)
     uint256 timestamp,
     address indexed sender
 );
@@ -42,14 +42,15 @@ event DecisionRecorded(
 function recordDecision(
     string calldata asset,
     string calldata decision,
-    uint256 confidence,
-    bytes32 dataSnapshotHash,
-    uint256 promptVersionHash,
+    uint256 confidence,         // basis points (0–10000)
+    bytes32 dataSnapshotHash,   // bytes32
+    bytes32 promptVersionHash,  // bytes32
     uint256 timestamp
 ) external;
 ```
 
-Two additions vs. the hackathon version: the data snapshot hash and prompt version are now part of the on-chain record, because the verifiability claim in `DATA.md` §2 only means something if it's actually anchored on-chain, not just computed and discarded.
+Two additions vs. the hackathon version: the data snapshot hash and prompt version hash are now `bytes32` sha256 hashes anchored on-chain. Confidence is stored as basis points (0–10000) to preserve precision without floating point.
+
 
 ---
 

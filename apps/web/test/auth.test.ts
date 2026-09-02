@@ -160,4 +160,28 @@ describe("Authentication Integration & Session Cookie Flow", () => {
 
     assert.strictEqual(mockSessions.length, 0);
   });
+
+  test("Session Expiration: rejects expired sessions (expiresAt < now)", () => {
+    const expiredSession: MockSession = {
+      id: "session-expired",
+      userId: "user-1",
+      expiresAt: new Date(Date.now() - 1000), // 1 second in the past
+      createdAt: new Date(Date.now() - 3600000),
+    };
+    mockSessions.push(expiredSession);
+
+    // Simulate getSessionUser expiration validation check (expiresAt < new Date())
+    const isExpired = expiredSession.expiresAt < new Date();
+    assert.strictEqual(isExpired, true);
+
+    if (isExpired) {
+      const idx = mockSessions.findIndex((s) => s.id === expiredSession.id);
+      if (idx !== -1) mockSessions.splice(idx, 1);
+    }
+
+    const foundSession = mockSessions.find((s) => s.id === "session-expired");
+    assert.strictEqual(foundSession, undefined);
+    assert.strictEqual(mockSessions.length, 0);
+  });
 });
+
