@@ -13,6 +13,9 @@
     "test": "node --import tsx/esm --test test/*.test.ts"
   },
   "dependencies": {
+    "@argus/agents": "*",
+    "@argus/consensus": "*",
+    "@argus/data-layer": "*",
     "@argus/shared-types": "*",
     "@prisma/client": "^6.4.1",
     "@workspace/ui": "*",
@@ -23,6 +26,7 @@
     "react": "19.2.4",
     "react-dom": "19.2.4"
   },
+
   "devDependencies": {
     "@tailwindcss/postcss": "^4",
     "@types/node": "^20",

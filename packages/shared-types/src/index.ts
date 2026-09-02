@@ -107,8 +107,10 @@ export interface ConsensusResult {
   breakdown: Record<VoteDirection, number>;
   disagreement: boolean;
   agentVotes: AgentVote[];
-  // TODO: Add reputation-weighted voting fields in v2 (AGENT.md §6, Phase 3).
+  degraded?: boolean;
+  responsiveCount?: number;
 }
+
 
 // ---------------------------------------------------------------------------
 // Data Layer Types (§7)
