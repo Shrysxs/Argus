@@ -60,7 +60,7 @@ export async function POST(req: Request) {
       };
     }
 
-    // 6. Compute reasoning hash for reasoning auditability (AGENTS.md §2)
+    // 6. Compute reasoning hash & prompt version hash for auditability (AGENTS.md §2)
     const combinedReasoning = agentVotes
       .map((v) => `${v.agentId}:${v.reasoning}`)
       .join("\n");
@@ -70,12 +70,20 @@ export async function POST(req: Request) {
       timestamp: snapshot.timestamp,
     });
 
+    const promptVersionsStr = agentVotes.map((v) => v.promptVersion).join(",");
+    const promptVersionHash = sha256({
+      promptVersionsStr,
+      asset,
+      count: agentVotes.length,
+    });
+
     // 7. Return unsealed ConsensusResult (no chain recording at this step)
     return NextResponse.json({
       ...consensus,
       degraded: isDegraded,
       responsiveCount,
       dataSnapshotHash: snapshot.hash,
+      promptVersionHash,
       reasoningHash,
       snapshot,
     });

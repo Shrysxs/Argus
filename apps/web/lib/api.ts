@@ -27,3 +27,31 @@ export async function analyzeAsset(asset: string): Promise<ConsensusResult> {
 
   return res.json();
 }
+
+export class RecordError extends Error {
+  constructor(
+    message: string,
+    public status: number,
+  ) {
+    super(message);
+    this.name = "RecordError";
+  }
+}
+
+export async function recordDecisionApi(payload: unknown): Promise<{ txHash: string; explorerUrl: string }> {
+  const res = await fetch("/api/record", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+  });
+
+  if (!res.ok) {
+    const data = await res.json().catch(() => ({ error: "Unknown recording error" }));
+    throw new RecordError(
+      data.error || `On-chain sealing failed (${res.status})`,
+      res.status,
+    );
+  }
+
+  return res.json();
+}

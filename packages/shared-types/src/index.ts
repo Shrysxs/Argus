@@ -180,6 +180,12 @@ export interface DecisionPayload {
   dataSnapshotHash: string;
 
   /**
+   * Hash of the agent prompt versions used (§5.2, ONCHAIN.md §2).
+   * bytes32 hex string on-chain.
+   */
+  promptVersionHash: string;
+
+  /**
    * Hash of the combined agent reasoning texts (§2 principle 2).
    * On-chain hash + off-chain full text ensures reasoning can't be
    * silently rewritten after the fact.

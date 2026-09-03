@@ -18,13 +18,15 @@ Living checklist. Update this as things ship — it's the fastest way to answer 
 ## 🟡 Phase 2 — First Real Chain Contact *(you are here)*
 - [x] Registry contract written, 17/17 tests passing
 - [x] Contract deployed to Monad testnet — `PenguinRegistry` live at `0x1001b9A1c69E513F7D463e3578bDeE7B94295919`
+- [x] Backend-signed decision sealing — `POST /api/record` live with `MonadChainAdapter` (`monad-deployer` keystore)
 
 - [ ] End-to-end run (data → agents → consensus → sealed on-chain) — **blocked**, no LLM provider key configured yet
 - [x] Basic frontend shell — landing + syndicate page, honest failure states, zero mock data
 
 ## ⬜ Phase 3 — Functional MVP App *(next up)*
-- [ ] Backend API routes (`/api/analyze`, `/api/record`) — wires existing packages together for real
-- [ ] Auth — login/signup (**open decision**, see below)
+- [x] Backend API routes (`/api/analyze`, `/api/record`) — wires existing packages together for real
+- [ ] Database persistence for unsealed analyze history in Postgres (currently analyze runs are ephemeral client roundtrips sealed on demand via `/api/record`)
+- [x] Auth — login/signup (email/password with httpOnly session cookies)
 - [ ] TradingView chart embedded on the syndicate/decision screens
 - [ ] Real design pass — the visual identity was left as a placeholder for the demo, needs an actual decision now that this is becoming the real app
 - [ ] Decision detail page — full vote breakdown, reasoning, on-chain link

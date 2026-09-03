@@ -1,7 +1,9 @@
 "use client";
 
+import { useState } from "react";
 import type { ConsensusResult, AgentVote, VoteDirection } from "@argus/shared-types";
 import { AGENT_ROSTER } from "@/lib/agents";
+import { recordDecisionApi } from "@/lib/api";
 
 type PanelState =
   | { status: "idle" }
@@ -116,6 +118,38 @@ export function AnalyzePanel({ state }: { state: PanelState }) {
   // Map votes by agentId for lookup
   const voteMap = new Map(votes.map((v) => [v.agentId, v]));
 
+  const [sealing, setSealing] = useState(false);
+  const [sealTxHash, setSealTxHash] = useState<string | null>(null);
+  const [sealError, setSealError] = useState<string | null>(null);
+
+  const handleSeal = async () => {
+    if (state.status !== "success") return;
+    setSealing(true);
+    setSealError(null);
+    try {
+      const rawResult = state.result as ConsensusResult & {
+        dataSnapshotHash?: string;
+        promptVersionHash?: string;
+        reasoningHash?: string;
+        snapshot?: { asset?: string; timestamp?: number };
+      };
+
+      const res = await recordDecisionApi({
+        asset: rawResult.snapshot?.asset || "BTC",
+        timestamp: rawResult.snapshot?.timestamp || Date.now(),
+        consensus: state.result,
+        dataSnapshotHash: rawResult.dataSnapshotHash,
+        promptVersionHash: rawResult.promptVersionHash,
+        reasoningHash: rawResult.reasoningHash,
+      });
+      setSealTxHash(res.txHash);
+    } catch (err) {
+      setSealError(err instanceof Error ? err.message : "Failed to seal decision on-chain");
+    } finally {
+      setSealing(false);
+    }
+  };
+
   return (
     <div className="space-y-6">
       {/* Degraded mode warning banner */}
@@ -152,7 +186,7 @@ export function AnalyzePanel({ state }: { state: PanelState }) {
 
       {/* Consensus summary — only when real data exists */}
       {state.status === "success" && (
-        <div className="rounded-lg border border-[var(--accent-glow)]/20 bg-[var(--accent-glow)]/5 px-5 py-4">
+        <div className="rounded-lg border border-[var(--accent-glow)]/20 bg-[var(--accent-glow)]/5 px-5 py-4 space-y-4">
           <div className="flex flex-wrap items-center justify-between gap-4">
             <div>
               <p className="text-xs font-medium uppercase tracking-widest text-muted-foreground">
@@ -191,7 +225,64 @@ export function AnalyzePanel({ state }: { state: PanelState }) {
                 High disagreement
               </span>
             )}
+
+            {/* Seal On-Chain action */}
+            <div>
+              {!sealTxHash && (
+                <button
+                  type="button"
+                  disabled={sealing}
+                  onClick={handleSeal}
+                  className="inline-flex items-center gap-2 rounded-md bg-[var(--accent-glow)] px-4 py-2 text-xs font-medium text-[oklch(0.15_0_0)] transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  {sealing && (
+                    <svg
+                      className="h-3.5 w-3.5 animate-spin"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                    >
+                      <circle
+                        className="opacity-25"
+                        cx="12"
+                        cy="12"
+                        r="10"
+                        stroke="currentColor"
+                        strokeWidth="4"
+                      />
+                      <path
+                        className="opacity-75"
+                        fill="currentColor"
+                        d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"
+                      />
+                    </svg>
+                  )}
+                  {sealing ? "Sealing On-Chain…" : "Seal On-Chain"}
+                </button>
+              )}
+            </div>
           </div>
+
+          {/* Seal Result Banner */}
+          {sealTxHash && (
+            <div className="mt-3 flex items-center gap-2 rounded-md border border-emerald-500/30 bg-emerald-500/10 px-4 py-2.5 text-xs text-emerald-400">
+              <span className="font-medium">✓ Sealed On-Chain:</span>
+              <a
+                href={`https://testnet.monadexplorer.com/tx/${sealTxHash}`}
+                target="_blank"
+                rel="noreferrer"
+                className="font-mono underline hover:text-emerald-300"
+              >
+                {sealTxHash.slice(0, 10)}...{sealTxHash.slice(-8)}
+              </a>
+            </div>
+          )}
+
+          {/* Seal Error Banner */}
+          {sealError && (
+            <div className="mt-3 rounded-md border border-red-500/30 bg-red-500/10 px-4 py-2 text-xs text-red-400">
+              <span className="font-medium">Sealing Error:</span> {sealError}
+            </div>
+          )}
         </div>
       )}
     </div>

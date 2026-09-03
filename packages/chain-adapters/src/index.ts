@@ -106,5 +106,6 @@ export interface ChainAdapter {
   estimateFee(input: DecisionPayload): Promise<bigint>;
 }
 
-// TODO: Implement at least one real ChainAdapter for the chosen chain
-// (AGENTS.md §4.2, Phase 2 — chain decision not yet made).
+export { MonadChainAdapter, monadChainAdapter } from "./monad.js";
+export type { MonadChainAdapterConfig } from "./monad.js";
+

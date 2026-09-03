@@ -8,7 +8,10 @@ const attempts = new Map<string, RateLimitRecord>();
 const WINDOW_MS = 15 * 60 * 1000; // 15 minutes window
 const MAX_ATTEMPTS = 5;
 
-export function checkRateLimit(key: string): { allowed: boolean; retryAfterSeconds?: number } {
+export function checkRateLimit(
+  key: string,
+  maxAttempts: number = MAX_ATTEMPTS
+): { allowed: boolean; retryAfterSeconds?: number } {
   const now = Date.now();
   const record = attempts.get(key);
 
@@ -16,7 +19,7 @@ export function checkRateLimit(key: string): { allowed: boolean; retryAfterSecon
     return { allowed: true };
   }
 
-  if (record.count >= MAX_ATTEMPTS) {
+  if (record.count >= maxAttempts) {
     const retryAfterSeconds = Math.ceil((record.resetAt - now) / 1000);
     return { allowed: false, retryAfterSeconds };
   }
