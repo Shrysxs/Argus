@@ -1,16 +1,17 @@
 import { randomUUID } from "node:crypto";
 import type { MarketDataSnapshot } from "@argus/shared-types";
-import { sha256 } from "./hash.js";
-import { TtlCache } from "./cache.js";
-import { DataFetchError, NotImplementedError } from "./errors.js";
-import { fetchPrice } from "./fetchers/price.js";
-import { fetchPriceFallback } from "./fetchers/price-fallback.js";
-import { fetchSentiment } from "./fetchers/sentiment.js";
-import { fetchSentimentFallback } from "./fetchers/sentiment-fallback.js";
-import { fetchOnchainMetrics } from "./fetchers/onchain-metrics.js";
-import type { PriceData } from "./fetchers/price.js";
-import type { SentimentData } from "./fetchers/sentiment.js";
-import type { OnchainMetricsData } from "./fetchers/onchain-metrics.js";
+import { sha256 } from "./hash";
+import { TtlCache } from "./cache";
+import { DataFetchError, NotImplementedError } from "./errors";
+import { fetchPrice } from "./fetchers/price";
+import { fetchPriceFallback } from "./fetchers/price-fallback";
+import { fetchSentiment } from "./fetchers/sentiment";
+import { fetchSentimentFallback } from "./fetchers/sentiment-fallback";
+import { fetchOnchainMetrics } from "./fetchers/onchain-metrics";
+import type { PriceData } from "./fetchers/price";
+import type { SentimentData } from "./fetchers/sentiment";
+import type { OnchainMetricsData } from "./fetchers/onchain-metrics";
+
 
 const DEFAULT_TTL_MS = 60_000;
 

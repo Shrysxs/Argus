@@ -1,15 +1,16 @@
 import { describe, it, beforeEach } from "node:test";
 import assert from "node:assert/strict";
 
-import { fetchPrice } from "./fetchers/price.js";
-import { fetchPriceFallback } from "./fetchers/price-fallback.js";
-import { fetchSentiment } from "./fetchers/sentiment.js";
-import { fetchSentimentFallback } from "./fetchers/sentiment-fallback.js";
-import { fetchOnchainMetrics } from "./fetchers/onchain-metrics.js";
-import { fetchSnapshot, snapshotCache } from "./snapshot.js";
-import { sha256 } from "./hash.js";
-import { TtlCache } from "./cache.js";
-import { DataFetchError, NotImplementedError } from "./errors.js";
+import { fetchPrice } from "./fetchers/price";
+import { fetchPriceFallback } from "./fetchers/price-fallback";
+import { fetchSentiment } from "./fetchers/sentiment";
+import { fetchSentimentFallback } from "./fetchers/sentiment-fallback";
+import { fetchOnchainMetrics } from "./fetchers/onchain-metrics";
+import { fetchSnapshot, snapshotCache } from "./snapshot";
+import { sha256 } from "./hash";
+import { TtlCache } from "./cache";
+import { DataFetchError, NotImplementedError } from "./errors";
+
 
 // ---------------------------------------------------------------------------
 // Mock helpers

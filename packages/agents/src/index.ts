@@ -8,6 +8,6 @@ import type {
 } from "@argus/shared-types";
 
 export type { AgentPersona, AgentVote, MarketDataSnapshot, VoteDirection };
-export { AGENT_ROSTER } from "./roster.js";
-export { runAgentPersona, runSyndicate } from "./runner.js";
-export type { RunAgentOptions, RunSyndicateOptions } from "./runner.js";
+export { AGENT_ROSTER } from "./roster";
+export { runAgentPersona, runSyndicate } from "./runner";
+export type { RunAgentOptions, RunSyndicateOptions } from "./runner";

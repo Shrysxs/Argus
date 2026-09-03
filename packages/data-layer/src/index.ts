@@ -1,14 +1,14 @@
-export { fetchSnapshot, snapshotCache } from "./snapshot.js";
-export { fetchPrice } from "./fetchers/price.js";
-export { fetchPriceFallback } from "./fetchers/price-fallback.js";
-export { fetchSentiment } from "./fetchers/sentiment.js";
-export { fetchSentimentFallback } from "./fetchers/sentiment-fallback.js";
-export { fetchOnchainMetrics } from "./fetchers/onchain-metrics.js";
-export { sha256 } from "./hash.js";
-export { TtlCache } from "./cache.js";
-export { DataFetchError, NotImplementedError } from "./errors.js";
+export { fetchSnapshot, snapshotCache } from "./snapshot";
+export { fetchPrice } from "./fetchers/price";
+export { fetchPriceFallback } from "./fetchers/price-fallback";
+export { fetchSentiment } from "./fetchers/sentiment";
+export { fetchSentimentFallback } from "./fetchers/sentiment-fallback";
+export { fetchOnchainMetrics } from "./fetchers/onchain-metrics";
+export { sha256 } from "./hash";
+export { TtlCache } from "./cache";
+export { DataFetchError, NotImplementedError } from "./errors";
 
-export type { PriceData } from "./fetchers/price.js";
-export type { SentimentData } from "./fetchers/sentiment.js";
-export type { OnchainMetricsData } from "./fetchers/onchain-metrics.js";
+export type { PriceData } from "./fetchers/price";
+export type { SentimentData } from "./fetchers/sentiment";
+export type { OnchainMetricsData } from "./fetchers/onchain-metrics";
 export type { MarketDataSnapshot } from "@argus/shared-types";

@@ -1,7 +1,8 @@
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
 
-import { computeKellyFraction, computeAuctionReserve } from "./kelly.js";
+import { computeKellyFraction, computeAuctionReserve } from "./kelly";
+
 
 // ---------------------------------------------------------------------------
 // computeKellyFraction

@@ -1,7 +1,8 @@
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
 
-import { computeVaultFee } from "./vault.js";
+import { computeVaultFee } from "./vault";
+
 
 // ---------------------------------------------------------------------------
 // Clear cases

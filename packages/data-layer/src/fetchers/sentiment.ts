@@ -1,4 +1,5 @@
-import { DataFetchError } from "../errors.js";
+import { DataFetchError } from "../errors";
+
 
 export interface SentimentData {
   value: number;        // 0–100: 0 = extreme fear, 100 = extreme greed

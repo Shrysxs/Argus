@@ -6,7 +6,8 @@ import {
   computeInformationValue,
   computeSignalPrice,
   H_MAX,
-} from "./entropy.js";
+} from "./entropy";
+
 
 // ---------------------------------------------------------------------------
 // computeEntropy — clear cases

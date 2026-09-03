@@ -1,5 +1,6 @@
-import { NotImplementedError } from "../errors.js";
-import type { PriceData } from "./price.js";
+import { NotImplementedError } from "../errors";
+import type { PriceData } from "./price";
+
 
 // DATA.md §1: "at least one fallback source before production launch."
 // Seam exists so a second price provider can be dropped in without

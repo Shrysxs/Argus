@@ -1,4 +1,5 @@
-import { DataFetchError } from "../errors.js";
+import { DataFetchError } from "../errors";
+
 
 export interface PriceData {
   asset: string;

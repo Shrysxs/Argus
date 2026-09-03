@@ -1,4 +1,5 @@
-import { NotImplementedError } from "../errors.js";
+import { NotImplementedError } from "../errors";
+
 
 export interface OnchainMetricsData {
   mvrv: number;

@@ -1,7 +1,8 @@
 import { test, describe } from "node:test";
 import assert from "node:assert/strict";
 import type { MarketDataSnapshot, AgentVote } from "@argus/shared-types";
-import { AGENT_ROSTER, runAgentPersona, runSyndicate } from "./index.js";
+import { AGENT_ROSTER, runAgentPersona, runSyndicate } from "./index";
+
 
 const mockSnapshot: MarketDataSnapshot = {
   snapshotId: "snap-123",

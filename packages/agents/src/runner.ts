@@ -4,7 +4,8 @@ import type {
   MarketDataSnapshot,
   VoteDirection,
 } from "@argus/shared-types";
-import { AGENT_ROSTER } from "./roster.js";
+import { AGENT_ROSTER } from "./roster";
+
 
 export interface RunAgentOptions {
   apiKey?: string;

@@ -1,7 +1,8 @@
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
 
-import { computeConsensus, DEFAULT_DISAGREEMENT_MARGIN } from "./engine.js";
+import { computeConsensus, DEFAULT_DISAGREEMENT_MARGIN } from "./engine";
+
 import type { AgentVote } from "@argus/shared-types";
 
 function makeVote(agentId: string, vote: 'BUY' | 'SELL' | 'HOLD', confidence: number): AgentVote {

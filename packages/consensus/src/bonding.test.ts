@@ -1,7 +1,8 @@
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
 
-import { computeBondingPrice } from "./bonding.js";
+import { computeBondingPrice } from "./bonding";
+
 
 // ---------------------------------------------------------------------------
 // Clear cases

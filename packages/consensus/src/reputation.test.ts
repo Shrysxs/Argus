@@ -1,7 +1,8 @@
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
 
-import { computeReputation, DEFAULT_LAMBDA } from "./reputation.js";
+import { computeReputation, DEFAULT_LAMBDA } from "./reputation";
+
 import type { HistoricalCall } from "@argus/shared-types";
 
 // ---------------------------------------------------------------------------
