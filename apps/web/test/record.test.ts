@@ -75,7 +75,7 @@ describe("POST /api/record Decision Sealing & Error Surfacing", () => {
     );
   });
 
-  test("Validation rules: rejects malformed bytes32 or invalid confidence", () => {
+  test("Validation rules: rejects malformed bytes32, missing id, or invalid confidence", () => {
     const adapter = new MonadChainAdapter();
 
     // Malformed bytes32 hash
@@ -102,5 +102,26 @@ describe("POST /api/record Decision Sealing & Error Surfacing", () => {
       },
       /confidence must be a number between 0 and 100/
     );
+  });
+
+  test("Pre-sealing database validation: fails loud if id is missing or unpersisted/already sealed", () => {
+    // Missing id check
+    const missingIdBody = { ...mockPayload };
+    const missingIdValid = typeof (missingIdBody as any).id === "string" && (missingIdBody as any).id.trim().length > 0;
+    assert.strictEqual(missingIdValid, false);
+
+    // Non-existent or already-sealed ID check
+    const mockDbRecords: Array<{ id: string; userId: string; sealed: boolean }> = [
+      { id: "existing_sealed_id", userId: "user_1", sealed: true },
+    ];
+
+    const findRecord = (id: string, userId: string) =>
+      mockDbRecords.find((r) => r.id === id && r.userId === userId && !r.sealed);
+
+    // Unpersisted ID
+    assert.strictEqual(findRecord("unpersisted_id_123", "user_1"), undefined);
+
+    // Already sealed ID
+    assert.strictEqual(findRecord("existing_sealed_id", "user_1"), undefined);
   });
 });

@@ -230,4 +230,55 @@ describe("Analyze History Persistence & User Isolation (BACKEND.md & AGENTS.md)"
     const page2 = await dbMock.findMany({ where: { userId }, skip: 10, take: limit });
     assert.strictEqual(page2.length, 5);
   });
+
+  test("6. Duplicate runs targeting: explicitly targets exact record by ID when duplicate asset/snapshot runs exist", async () => {
+    dbMock.clear();
+    const userId = "user_dup";
+
+    // Run 1 (older)
+    const run1 = await dbMock.create({
+      userId,
+      asset: "BTC",
+      recommendation: "BUY",
+      confidence: 85,
+      breakdown: { BUY: 85, SELL: 0, HOLD: 15 },
+      disagreement: false,
+      dataSnapshotHash: "0xsame_snapshot_hash",
+      promptVersionHash: "0xsame_prompt_hash",
+      sealed: false,
+      txHash: null,
+    });
+
+    // Run 2 (newer duplicate asset/snapshot)
+    const run2 = await dbMock.create({
+      userId,
+      asset: "BTC",
+      recommendation: "BUY",
+      confidence: 85,
+      breakdown: { BUY: 85, SELL: 0, HOLD: 15 },
+      disagreement: false,
+      dataSnapshotHash: "0xsame_snapshot_hash",
+      promptVersionHash: "0xsame_prompt_hash",
+      sealed: false,
+      txHash: null,
+    });
+
+    // Explicitly seal run2 by ID
+    const updateRun2 = await dbMock.updateMany({
+      where: { id: run2.id, userId, sealed: false },
+      data: { sealed: true, txHash: "0xrun2_tx" },
+    });
+
+    assert.strictEqual(updateRun2.count, 1);
+
+    const history = await dbMock.findMany({ where: { userId } });
+    const run1State = history.find((r) => r.id === run1.id);
+    const run2State = history.find((r) => r.id === run2.id);
+
+    // Verify run2 is sealed and run1 remains unsealed (no ambiguous batch updates)
+    assert.strictEqual(run2State?.sealed, true);
+    assert.strictEqual(run2State?.txHash, "0xrun2_tx");
+    assert.strictEqual(run1State?.sealed, false);
+    assert.strictEqual(run1State?.txHash, null);
+  });
 });

@@ -79,6 +79,27 @@ export async function POST(req: Request) {
       );
     }
 
+    const recordId = typeof (body as any).id === "string" ? (body as any).id.trim() : "";
+    if (!recordId) {
+      return NextResponse.json(
+        { error: "Invalid payload: analyze result id is required" },
+        { status: 400 }
+      );
+    }
+
+    // Pre-sealing DB existence & unsealed state validation
+    const { db } = await import("@/lib/db");
+    const existingRecord = await db.analyzeResult.findFirst({
+      where: { id: recordId, userId: user.id, sealed: false },
+    });
+
+    if (!existingRecord) {
+      return NextResponse.json(
+        { error: "Analysis record not found, unauthorized, or already sealed on-chain" },
+        { status: 404 }
+      );
+    }
+
     // Prepare clean DecisionPayload
     const payload: DecisionPayload = {
       asset,
@@ -101,28 +122,16 @@ export async function POST(req: Request) {
     }
 
     // Update DB history row to reflect on-chain sealed state (AGENTS.md & BACKEND.md)
-    try {
-      const { db } = await import("@/lib/db");
-      const recordId = typeof (body as any).id === "string" ? (body as any).id : undefined;
+    const updateResult = await db.analyzeResult.updateMany({
+      where: { id: recordId, userId: user.id, sealed: false },
+      data: { sealed: true, txHash: finalTxHash },
+    });
 
-      if (recordId) {
-        await db.analyzeResult.updateMany({
-          where: { id: recordId, userId: user.id },
-          data: { sealed: true, txHash: finalTxHash },
-        });
-      } else {
-        await db.analyzeResult.updateMany({
-          where: {
-            userId: user.id,
-            asset,
-            dataSnapshotHash,
-            sealed: false,
-          },
-          data: { sealed: true, txHash: finalTxHash },
-        });
-      }
-    } catch (dbErr) {
-      console.error("Failed to update analyzeResult sealing status in DB:", dbErr);
+    if (updateResult.count === 0) {
+      return NextResponse.json(
+        { error: "Failed to update analysis record: record missing or already sealed" },
+        { status: 409 }
+      );
     }
 
     return NextResponse.json({
