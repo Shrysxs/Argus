@@ -72,13 +72,29 @@ export function Header() {
           Argus
         </Link>
 
-        {user && pathname !== "/syndicate" && (
-          <Link
-            href="/syndicate"
-            className="text-sm font-medium text-muted-foreground transition-colors hover:text-foreground"
-          >
-            Syndicate
-          </Link>
+        {user && (
+          <div className="flex items-center gap-4">
+            <Link
+              href="/syndicate"
+              className={`text-sm font-medium transition-colors ${
+                pathname === "/syndicate"
+                  ? "text-foreground font-semibold"
+                  : "text-muted-foreground hover:text-foreground"
+              }`}
+            >
+              Syndicate
+            </Link>
+            <Link
+              href="/history"
+              className={`text-sm font-medium transition-colors ${
+                pathname === "/history"
+                  ? "text-foreground font-semibold"
+                  : "text-muted-foreground hover:text-foreground"
+              }`}
+            >
+              History
+            </Link>
+          </div>
         )}
       </div>
 

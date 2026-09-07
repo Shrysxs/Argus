@@ -213,8 +213,12 @@ export function AnalyzePanel({
         }
         const res = await adapter.recordDecision(payload);
         setSealTxHash(res.txHash);
+        // Persist sealing status to backend DB for history tracking
+        await recordDecisionApi({ ...payload, txHash: res.txHash, id: (rawResult as any).id }).catch((err) => {
+          console.warn("Backend DB sync for client-signed seal warning:", err);
+        });
       } else {
-        const res = await recordDecisionApi(payload);
+        const res = await recordDecisionApi({ ...payload, id: (rawResult as any).id });
         setSealTxHash(res.txHash);
       }
     } catch (err) {

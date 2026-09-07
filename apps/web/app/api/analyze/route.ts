@@ -77,8 +77,32 @@ export async function POST(req: Request) {
       count: agentVotes.length,
     });
 
+    // Persist analyze result to DB tied to user (AGENTS.md & BACKEND.md)
+    let analyzeId: string | undefined;
+    try {
+      const { db } = await import("@/lib/db");
+      const record = await db.analyzeResult.create({
+        data: {
+          userId: user.id,
+          asset,
+          recommendation: consensus.recommendation,
+          confidence: consensus.confidence,
+          breakdown: consensus.breakdown as any,
+          disagreement: consensus.disagreement,
+          dataSnapshotHash: snapshot.hash,
+          promptVersionHash,
+          sealed: false,
+          txHash: null,
+        },
+      });
+      analyzeId = record.id;
+    } catch (dbErr) {
+      console.error("Failed to persist analyze result to DB:", dbErr);
+    }
+
     // 7. Return unsealed ConsensusResult (no chain recording at this step)
     return NextResponse.json({
+      id: analyzeId,
       ...consensus,
       degraded: isDegraded,
       responsiveCount,

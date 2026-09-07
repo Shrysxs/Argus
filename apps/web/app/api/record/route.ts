@@ -89,12 +89,45 @@ export async function POST(req: Request) {
       reasoningHash: body.reasoningHash || promptVersionHash,
     };
 
-    // 3. Record decision on-chain via Monad ChainAdapter
-    const result = await monadChainAdapter.recordDecision(payload);
+    let finalTxHash = "";
+
+    // If client already signed on-chain and sent txHash in body, use it directly
+    if (typeof (body as any).txHash === "string" && (body as any).txHash.startsWith("0x")) {
+      finalTxHash = (body as any).txHash;
+    } else {
+      // 3. Record decision on-chain via Monad ChainAdapter (Backend Signed)
+      const result = await monadChainAdapter.recordDecision(payload);
+      finalTxHash = result.txHash;
+    }
+
+    // Update DB history row to reflect on-chain sealed state (AGENTS.md & BACKEND.md)
+    try {
+      const { db } = await import("@/lib/db");
+      const recordId = typeof (body as any).id === "string" ? (body as any).id : undefined;
+
+      if (recordId) {
+        await db.analyzeResult.updateMany({
+          where: { id: recordId, userId: user.id },
+          data: { sealed: true, txHash: finalTxHash },
+        });
+      } else {
+        await db.analyzeResult.updateMany({
+          where: {
+            userId: user.id,
+            asset,
+            dataSnapshotHash,
+            sealed: false,
+          },
+          data: { sealed: true, txHash: finalTxHash },
+        });
+      }
+    } catch (dbErr) {
+      console.error("Failed to update analyzeResult sealing status in DB:", dbErr);
+    }
 
     return NextResponse.json({
-      txHash: result.txHash,
-      explorerUrl: `https://testnet.monadexplorer.com/tx/${result.txHash}`,
+      txHash: finalTxHash,
+      explorerUrl: `https://testnet.monadexplorer.com/tx/${finalTxHash}`,
     });
   } catch (err: unknown) {
     console.error("API /api/record execution error:", err);

@@ -12,11 +12,12 @@ datasource db {
 }
 
 model User {
-  id           String    @id @default(uuid())
-  email        String    @unique
-  passwordHash String    @map("password_hash")
-  createdAt    DateTime  @default(now()) @map("created_at")
-  sessions     Session[]
+  id             String          @id @default(uuid())
+  email          String          @unique
+  passwordHash   String          @map("password_hash")
+  createdAt      DateTime        @default(now()) @map("created_at")
+  sessions       Session[]
+  analyzeResults AnalyzeResult[]
 
   // TODO: Link connected wallet address to user account (ONCHAIN.md §1)
 
@@ -31,4 +32,22 @@ model Session {
   createdAt DateTime @default(now()) @map("created_at")
 
   @@map("sessions")
+}
+
+model AnalyzeResult {
+  id                String   @id @default(uuid())
+  userId            String   @map("user_id")
+  user              User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  asset             String
+  recommendation    String
+  confidence        Float
+  breakdown         Json
+  disagreement      Boolean  @default(false)
+  dataSnapshotHash  String   @map("data_snapshot_hash")
+  promptVersionHash String   @map("prompt_version_hash")
+  sealed            Boolean  @default(false)
+  txHash            String?  @map("tx_hash")
+  createdAt         DateTime @default(now()) @map("created_at")
+
+  @@map("analyze_results")
 }
