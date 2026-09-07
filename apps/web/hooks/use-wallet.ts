@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback } from "react";
 import {
   BrowserMonadChainAdapter,
   MONAD_TESTNET_CHAIN_ID,
-} from "@argus/chain-adapters";
+} from "@argus/chain-adapters/browser";
 
 export interface WalletState {
   address: string | null;
