@@ -108,4 +108,12 @@ export interface ChainAdapter {
 
 export { MonadChainAdapter, monadChainAdapter } from "./monad.js";
 export type { MonadChainAdapterConfig } from "./monad.js";
+export {
+  BrowserMonadChainAdapter,
+  browserMonadChainAdapter,
+  MONAD_TESTNET_CHAIN_ID,
+  MONAD_TESTNET_HEX_CHAIN_ID,
+} from "./browser-monad.js";
+export type { BrowserMonadConfig } from "./browser-monad.js";
+
 

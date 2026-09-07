@@ -10,7 +10,8 @@
     "lint": "echo 'no lint configured yet'"
   },
   "dependencies": {
-    "@argus/shared-types": "*"
+    "@argus/shared-types": "*",
+    "viem": "^2.23.0"
   },
   "devDependencies": {
     "@workspace/typescript-config": "*",

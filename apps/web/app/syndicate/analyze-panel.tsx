@@ -1,9 +1,10 @@
 "use client";
 
-import { useState } from "react";
-import type { ConsensusResult, AgentVote, VoteDirection } from "@argus/shared-types";
+import { useState, useEffect } from "react";
+import type { ConsensusResult, AgentVote, VoteDirection, DecisionPayload } from "@argus/shared-types";
 import { AGENT_ROSTER } from "@/lib/agents";
 import { recordDecisionApi } from "@/lib/api";
+import { useWallet } from "@/hooks/use-wallet";
 
 type PanelState =
   | { status: "idle" }
@@ -118,14 +119,28 @@ export function AnalyzePanel({ state }: { state: PanelState }) {
   // Map votes by agentId for lookup
   const voteMap = new Map(votes.map((v) => [v.agentId, v]));
 
+  const { address, isWrongNetwork, connect, switchNetwork, adapter } = useWallet();
+
+  const [sealMode, setSealMode] = useState<"client" | "backend">("backend");
+  const [userExplicitlySelectedMode, setUserExplicitlySelectedMode] = useState(false);
   const [sealing, setSealing] = useState(false);
   const [sealTxHash, setSealTxHash] = useState<string | null>(null);
   const [sealError, setSealError] = useState<string | null>(null);
+
+  // Automatically default to client wallet when wallet is connected (unless user explicitly chose backend)
+  useEffect(() => {
+    if (address && !userExplicitlySelectedMode) {
+      setSealMode("client");
+    } else if (!address && !userExplicitlySelectedMode) {
+      setSealMode("backend");
+    }
+  }, [address, userExplicitlySelectedMode]);
 
   const handleSeal = async () => {
     if (state.status !== "success") return;
     setSealing(true);
     setSealError(null);
+
     try {
       const rawResult = state.result as ConsensusResult & {
         dataSnapshotHash?: string;
@@ -134,21 +149,42 @@ export function AnalyzePanel({ state }: { state: PanelState }) {
         snapshot?: { asset?: string; timestamp?: number };
       };
 
-      const res = await recordDecisionApi({
+      const defaultHash = "0x1111111111111111111111111111111111111111111111111111111111111111";
+
+      const payload: DecisionPayload = {
         asset: rawResult.snapshot?.asset || "BTC",
         timestamp: rawResult.snapshot?.timestamp || Date.now(),
         consensus: state.result,
-        dataSnapshotHash: rawResult.dataSnapshotHash,
-        promptVersionHash: rawResult.promptVersionHash,
-        reasoningHash: rawResult.reasoningHash,
-      });
-      setSealTxHash(res.txHash);
+        dataSnapshotHash: rawResult.dataSnapshotHash || defaultHash,
+        promptVersionHash: rawResult.promptVersionHash || rawResult.reasoningHash || defaultHash,
+        reasoningHash: rawResult.reasoningHash || rawResult.promptVersionHash || defaultHash,
+      };
+
+      if (sealMode === "client") {
+        if (!address) {
+          await connect();
+          return;
+        }
+        if (isWrongNetwork) {
+          await switchNetwork();
+          return;
+        }
+        const res = await adapter.recordDecision(payload);
+        setSealTxHash(res.txHash);
+      } else {
+        const res = await recordDecisionApi(payload);
+        setSealTxHash(res.txHash);
+      }
     } catch (err) {
       setSealError(err instanceof Error ? err.message : "Failed to seal decision on-chain");
     } finally {
       setSealing(false);
     }
   };
+
+  const truncatedAddress = address
+    ? `${address.slice(0, 6)}...${address.slice(-4)}`
+    : "";
 
   return (
     <div className="space-y-6">
@@ -186,7 +222,7 @@ export function AnalyzePanel({ state }: { state: PanelState }) {
 
       {/* Consensus summary — only when real data exists */}
       {state.status === "success" && (
-        <div className="rounded-lg border border-[var(--accent-glow)]/20 bg-[var(--accent-glow)]/5 px-5 py-4 space-y-4">
+        <div className="rounded-lg border border-[var(--accent-glow)]/20 bg-[var(--accent-glow)]/5 px-5 py-5 space-y-4">
           <div className="flex flex-wrap items-center justify-between gap-4">
             <div>
               <p className="text-xs font-medium uppercase tracking-widest text-muted-foreground">
@@ -225,47 +261,137 @@ export function AnalyzePanel({ state }: { state: PanelState }) {
                 High disagreement
               </span>
             )}
+          </div>
 
-            {/* Seal On-Chain action */}
-            <div>
-              {!sealTxHash && (
-                <button
-                  type="button"
-                  disabled={sealing}
-                  onClick={handleSeal}
-                  className="inline-flex items-center gap-2 rounded-md bg-[var(--accent-glow)] px-4 py-2 text-xs font-medium text-[oklch(0.15_0_0)] transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
-                >
-                  {sealing && (
-                    <svg
-                      className="h-3.5 w-3.5 animate-spin"
-                      viewBox="0 0 24 24"
-                      fill="none"
+          {/* On-Chain Sealing Section */}
+          <div className="mt-4 pt-4 border-t border-border/40 space-y-3">
+            {!sealTxHash && (
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                {/* Sealing Path Selector */}
+                <div className="space-y-1.5">
+                  <span className="text-xs font-medium text-muted-foreground">
+                    Select Sealing Signer Path:
+                  </span>
+                  <div className="flex flex-wrap gap-2 text-xs">
+                    {/* Option 1: Connected Client Wallet */}
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setSealMode("client");
+                        setUserExplicitlySelectedMode(true);
+                      }}
+                      className={`flex items-center gap-2 rounded-lg border px-3 py-1.5 transition-all ${
+                        sealMode === "client"
+                          ? "border-[var(--accent-glow)] bg-[var(--accent-glow)]/10 text-foreground font-medium"
+                          : "border-border/50 bg-card/30 text-muted-foreground hover:text-foreground"
+                      }`}
                     >
-                      <circle
-                        className="opacity-25"
-                        cx="12"
-                        cy="12"
-                        r="10"
-                        stroke="currentColor"
-                        strokeWidth="4"
-                      />
-                      <path
-                        className="opacity-75"
-                        fill="currentColor"
-                        d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"
-                      />
-                    </svg>
+                      <span className={`h-2 w-2 rounded-full ${sealMode === "client" ? "bg-[var(--accent-glow)]" : "bg-muted"}`} />
+                      <span>Client Wallet</span>
+                      <span className="text-[10px] text-muted-foreground">
+                        ({address ? truncatedAddress : "Not Connected"})
+                      </span>
+                    </button>
+
+                    {/* Option 2: Backend System Signer */}
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setSealMode("backend");
+                        setUserExplicitlySelectedMode(true);
+                      }}
+                      className={`flex items-center gap-2 rounded-lg border px-3 py-1.5 transition-all ${
+                        sealMode === "backend"
+                          ? "border-[var(--accent-glow)] bg-[var(--accent-glow)]/10 text-foreground font-medium"
+                          : "border-border/50 bg-card/30 text-muted-foreground hover:text-foreground"
+                      }`}
+                    >
+                      <span className={`h-2 w-2 rounded-full ${sealMode === "backend" ? "bg-[var(--accent-glow)]" : "bg-muted"}`} />
+                      <span>Backend Signer</span>
+                      <span className="text-[10px] text-muted-foreground">
+                        (System Keystore)
+                      </span>
+                    </button>
+                  </div>
+
+                  {/* Pre-flight Visibility Banner */}
+                  <div className="text-[11px] text-muted-foreground/80 flex items-center gap-2 pt-0.5">
+                    {sealMode === "client" ? (
+                      <span>
+                        <strong className="text-foreground font-medium">Signer:</strong> {address ? address : "Connect Wallet"} •{" "}
+                        <strong className="text-amber-400 font-medium">Gas:</strong> User Pays (~0.0001 MON)
+                      </span>
+                    ) : (
+                      <span>
+                        <strong className="text-foreground font-medium">Signer:</strong> System Keystore •{" "}
+                        <strong className="text-emerald-400 font-medium">Gas:</strong> Protocol Pays (0 MON for User)
+                      </span>
+                    )}
+                  </div>
+                </div>
+
+                {/* Seal Action Button */}
+                <div className="flex flex-col items-end gap-1">
+                  {sealMode === "client" && !address ? (
+                    <button
+                      type="button"
+                      onClick={connect}
+                      className="inline-flex items-center gap-2 rounded-md bg-[var(--accent-glow)] px-4 py-2 text-xs font-medium text-[oklch(0.15_0_0)] transition-opacity hover:opacity-90"
+                    >
+                      Connect Wallet to Seal
+                    </button>
+                  ) : sealMode === "client" && isWrongNetwork ? (
+                    <button
+                      type="button"
+                      onClick={switchNetwork}
+                      className="inline-flex items-center gap-2 rounded-md border border-amber-500/40 bg-amber-500/10 px-4 py-2 text-xs font-medium text-amber-400 transition-colors hover:bg-amber-500/20"
+                    >
+                      Switch to Monad Testnet
+                    </button>
+                  ) : (
+                    <button
+                      type="button"
+                      disabled={sealing}
+                      onClick={handleSeal}
+                      className="inline-flex items-center gap-2 rounded-md bg-[var(--accent-glow)] px-4 py-2 text-xs font-medium text-[oklch(0.15_0_0)] transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
+                    >
+                      {sealing && (
+                        <svg
+                          className="h-3.5 w-3.5 animate-spin"
+                          viewBox="0 0 24 24"
+                          fill="none"
+                        >
+                          <circle
+                            className="opacity-25"
+                            cx="12"
+                            cy="12"
+                            r="10"
+                            stroke="currentColor"
+                            strokeWidth="4"
+                          />
+                          <path
+                            className="opacity-75"
+                            fill="currentColor"
+                            d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"
+                          />
+                        </svg>
+                      )}
+                      {sealing
+                        ? "Sealing On-Chain…"
+                        : sealMode === "client"
+                        ? "Seal On-Chain (Client Signed)"
+                        : "Seal On-Chain (Backend Signed)"}
+                    </button>
                   )}
-                  {sealing ? "Sealing On-Chain…" : "Seal On-Chain"}
-                </button>
-              )}
-            </div>
+                </div>
+              </div>
+            )}
           </div>
 
           {/* Seal Result Banner */}
           {sealTxHash && (
             <div className="mt-3 flex items-center gap-2 rounded-md border border-emerald-500/30 bg-emerald-500/10 px-4 py-2.5 text-xs text-emerald-400">
-              <span className="font-medium">✓ Sealed On-Chain:</span>
+              <span className="font-medium">✓ Sealed On-Chain ({sealMode === "client" ? "Client Signed" : "Backend Signed"}):</span>
               <a
                 href={`https://testnet.monadexplorer.com/tx/${sealTxHash}`}
                 target="_blank"
@@ -288,4 +414,5 @@ export function AnalyzePanel({ state }: { state: PanelState }) {
     </div>
   );
 }
+
 
