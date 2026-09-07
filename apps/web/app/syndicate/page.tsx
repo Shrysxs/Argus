@@ -150,9 +150,9 @@ export default function SyndicatePage() {
           </div>
         </div>
 
-        {/* Deliberation panel */}
-        <div className="mx-auto mt-8 w-full max-w-6xl">
-          <AnalyzePanel state={panelState} />
+        {/* Deliberation panel & workbench */}
+        <div className="mx-auto mt-6 w-full max-w-7xl">
+          <AnalyzePanel state={panelState} asset={selectedAsset} />
         </div>
       </main>
     </div>

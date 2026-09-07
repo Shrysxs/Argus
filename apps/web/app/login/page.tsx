@@ -62,15 +62,21 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="flex min-h-screen flex-col">
+    <div className="relative flex min-h-screen flex-col bg-[#08090C] text-foreground overflow-hidden">
+      {/* Background glow Orbs */}
+      <div className="pointer-events-none absolute -top-40 left-1/2 -translate-x-1/2 h-[450px] w-[600px] rounded-full bg-gradient-to-tr from-purple-900/15 via-cyan-900/10 to-transparent blur-3xl" />
+
       <Header />
 
-      <main className="flex flex-1 flex-col items-center justify-center px-6 pb-20">
-        <div className="w-full max-w-md rounded-xl border border-border/50 bg-card/50 p-8 backdrop-blur-sm shadow-xl">
+      <main className="relative z-10 flex flex-1 flex-col items-center justify-center px-6 pb-20">
+        <div className="w-full max-w-md rounded-2xl border border-white/10 bg-slate-950/70 p-8 backdrop-blur-md shadow-[0_0_40px_rgba(0,0,0,0.5)]">
           <div className="text-center">
+            <div className="inline-flex h-10 w-10 items-center justify-center rounded-xl bg-purple-500/10 border border-purple-500/20 text-purple-400 mb-3">
+              🔒
+            </div>
             <h1 className="text-2xl font-bold tracking-tight">Welcome Back</h1>
-            <p className="mt-1 text-sm text-muted-foreground">
-              Log in to your Argus syndicate account
+            <p className="mt-1 text-xs text-muted-foreground font-mono">
+              Log in to access your Argus syndicate session
             </p>
           </div>
 
@@ -84,7 +90,7 @@ export default function LoginPage() {
             <div>
               <label
                 htmlFor="email"
-                className="block text-xs font-medium text-muted-foreground"
+                className="block text-xs font-mono text-muted-foreground mb-1"
               >
                 Email Address
               </label>
@@ -95,14 +101,14 @@ export default function LoginPage() {
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 placeholder="name@example.com"
-                className="mt-1 w-full rounded-lg border border-border/50 bg-background px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground/50 focus:border-[var(--accent-glow)] focus:outline-none focus:ring-1 focus:ring-[var(--accent-glow)]"
+                className="w-full rounded-xl border border-white/10 bg-slate-900/60 px-3.5 py-2.5 text-sm text-foreground placeholder:text-muted-foreground/40 focus:border-purple-500 focus:outline-none focus:ring-1 focus:ring-purple-500 transition-all font-sans"
               />
             </div>
 
             <div>
               <label
                 htmlFor="password"
-                className="block text-xs font-medium text-muted-foreground"
+                className="block text-xs font-mono text-muted-foreground mb-1"
               >
                 Password
               </label>
@@ -113,14 +119,14 @@ export default function LoginPage() {
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 placeholder="••••••••"
-                className="mt-1 w-full rounded-lg border border-border/50 bg-background px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground/50 focus:border-[var(--accent-glow)] focus:outline-none focus:ring-1 focus:ring-[var(--accent-glow)]"
+                className="w-full rounded-xl border border-white/10 bg-slate-900/60 px-3.5 py-2.5 text-sm text-foreground placeholder:text-muted-foreground/40 focus:border-purple-500 focus:outline-none focus:ring-1 focus:ring-purple-500 transition-all font-sans"
               />
             </div>
 
             <button
               type="submit"
               disabled={loading}
-              className="w-full rounded-lg bg-[var(--accent-glow)] py-2.5 text-sm font-medium text-[oklch(0.15_0_0)] transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
+              className="w-full rounded-xl bg-gradient-to-r from-purple-600 to-indigo-600 py-2.5 text-sm font-semibold text-white shadow-[0_0_20px_rgba(139,92,246,0.25)] transition-all hover:opacity-95 disabled:cursor-not-allowed disabled:opacity-50"
             >
               {loading ? "Logging in…" : "Log In"}
             </button>
@@ -130,7 +136,7 @@ export default function LoginPage() {
             Don&apos;t have an account?{" "}
             <Link
               href="/signup"
-              className="font-medium text-[var(--accent-glow)] hover:underline"
+              className="font-medium text-purple-400 hover:underline"
             >
               Sign up
             </Link>
