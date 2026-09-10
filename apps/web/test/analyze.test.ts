@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import type { MarketDataSnapshot, AgentVote } from "@argus/shared-types";
 import { runSyndicate } from "@argus/agents";
 import { computeConsensus } from "@argus/consensus";
-import { MIN_RESPONSIVE_AGENTS } from "../app/api/analyze/route";
+import { POST as analyzeHandler, MIN_RESPONSIVE_AGENTS } from "../app/api/analyze/route";
 
 const mockSnapshot: MarketDataSnapshot = {
   snapshotId: "test-snapshot-1",
@@ -19,16 +19,16 @@ const mockSnapshot: MarketDataSnapshot = {
 
 describe("POST /api/analyze Orchestration & Auth Flow", () => {
   test("Unauthenticated request: rejects with 401 status", async () => {
-    // Simulate getSessionUser returning null (no session cookie)
-    const mockUser = null;
-    assert.strictEqual(mockUser, null);
+    const req = new Request("http://localhost:3000/api/analyze", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ asset: "BTC" }),
+    });
 
-    // Endpoint response structure for unauthenticated request
-    const responseStatus = mockUser ? 200 : 401;
-    const responseBody = mockUser ? {} : { error: "Unauthorized" };
-
-    assert.strictEqual(responseStatus, 401);
-    assert.strictEqual(responseBody.error, "Unauthorized");
+    const res = await analyzeHandler(req);
+    assert.strictEqual(res.status, 401);
+    const body = await res.json();
+    assert.strictEqual(body.error, "Unauthorized");
   });
 
   test("Successful full-syndicate call: 5 of 5 agents respond", async () => {

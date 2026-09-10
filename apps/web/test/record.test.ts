@@ -20,14 +20,20 @@ const mockPayload: DecisionPayload = {
   reasoningHash: validBytes32Hash,
 };
 
+import { POST as recordHandler } from "../app/api/record/route";
+
 describe("POST /api/record Decision Sealing & Error Surfacing", () => {
   test("Unauthenticated request: returns 401 Unauthorized status", async () => {
-    const mockUser = null;
-    const responseStatus = mockUser ? 200 : 401;
-    const responseBody = mockUser ? { txHash: "0x..." } : { error: "Unauthorized" };
+    const req = new Request("http://localhost:3000/api/record", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(mockPayload),
+    });
 
-    assert.strictEqual(responseStatus, 401);
-    assert.strictEqual(responseBody.error, "Unauthorized");
+    const res = await recordHandler(req);
+    assert.strictEqual(res.status, 401);
+    const body = await res.json();
+    assert.strictEqual(body.error, "Unauthorized");
   });
 
   test("Successful record call with mocked ChainAdapter: returns txHash without spending testnet MON", async () => {
@@ -102,26 +108,5 @@ describe("POST /api/record Decision Sealing & Error Surfacing", () => {
       },
       /confidence must be a number between 0 and 100/
     );
-  });
-
-  test("Pre-sealing database validation: fails loud if id is missing or unpersisted/already sealed", () => {
-    // Missing id check
-    const missingIdBody = { ...mockPayload };
-    const missingIdValid = typeof (missingIdBody as any).id === "string" && (missingIdBody as any).id.trim().length > 0;
-    assert.strictEqual(missingIdValid, false);
-
-    // Non-existent or already-sealed ID check
-    const mockDbRecords: Array<{ id: string; userId: string; sealed: boolean }> = [
-      { id: "existing_sealed_id", userId: "user_1", sealed: true },
-    ];
-
-    const findRecord = (id: string, userId: string) =>
-      mockDbRecords.find((r) => r.id === id && r.userId === userId && !r.sealed);
-
-    // Unpersisted ID
-    assert.strictEqual(findRecord("unpersisted_id_123", "user_1"), undefined);
-
-    // Already sealed ID
-    assert.strictEqual(findRecord("existing_sealed_id", "user_1"), undefined);
   });
 });

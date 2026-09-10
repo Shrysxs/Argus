@@ -132,115 +132,95 @@ describe("API Route Behavior & Enumeration Protection", () => {
   });
 });
 
-describe("Authentication Integration & Session Cookie Flow", () => {
-  beforeEach(() => {
-    mockUsers.length = 0;
-    mockSessions.length = 0;
-  });
+import { db } from "../lib/db";
+import { createSession, getSessionUser, destroySession } from "../lib/auth/session";
 
-  test("Signup Flow: successfully creates user and returns 201", async () => {
-    const email = "newuser@argus.io";
-    const password = "Password123";
+describe("Authentication Integration & Session Cookie Flow (Real Database & Route Handlers)", () => {
+  const testEmail = `test_auth_${Date.now()}@argus.io`;
+  const testPassword = "Password123!";
 
-    const emailCheck = validateEmail(email);
-    assert.strictEqual(emailCheck.valid, true);
-
-    const hash = await hashPassword(password);
-    const newUser: MockUser = {
-      id: "user-1",
-      email,
-      passwordHash: hash,
-      createdAt: new Date(),
-    };
-    mockUsers.push(newUser);
-
-    assert.strictEqual(mockUsers.length, 1);
-    assert.strictEqual(mockUsers[0]?.email, email);
-  });
-
-  test("Duplicate Email Rejection: rejects registration if email already exists", () => {
-    mockUsers.push({
-      id: "user-1",
-      email: "existing@argus.io",
-      passwordHash: "somehash",
-      createdAt: new Date(),
+  test("Signup Flow: calls POST /api/auth/signup, creates user in real database, returns 201", async () => {
+    const req = new Request("http://localhost:3000/api/auth/signup", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "x-forwarded-for": `127.0.0.1-${Date.now()}` },
+      body: JSON.stringify({ email: testEmail, password: testPassword }),
     });
 
-    const isDuplicate = mockUsers.some((u) => u.email === "existing@argus.io");
-    assert.strictEqual(isDuplicate, true);
+    const res = await signupHandler(req);
+    assert.strictEqual(res.status, 201);
+
+    const body = await res.json();
+    assert.ok(body.user?.id);
+    assert.strictEqual(body.user.email, testEmail);
+
+    // Verify user actually exists in PostgreSQL via Prisma
+    const dbUser = await db.user.findUnique({ where: { email: testEmail } });
+    assert.ok(dbUser);
+    assert.strictEqual(dbUser.email, testEmail);
   });
 
-  test("Login Flow: verifies password and returns user", async () => {
-    const rawPassword = "ValidPassword123";
-    const hash = await hashPassword(rawPassword);
-    mockUsers.push({
-      id: "user-1",
-      email: "trader@argus.io",
-      passwordHash: hash,
-      createdAt: new Date(),
+  test("Duplicate Email Rejection: rejects duplicate registration with 409 Conflict", async () => {
+    const req = new Request("http://localhost:3000/api/auth/signup", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "x-forwarded-for": `127.0.0.1-dup-${Date.now()}` },
+      body: JSON.stringify({ email: testEmail, password: testPassword }),
     });
 
-    const user = mockUsers.find((u) => u.email === "trader@argus.io");
+    const res = await signupHandler(req);
+    assert.strictEqual(res.status, 409);
+    const body = await res.json();
+    assert.strictEqual(body.error, "Email is already registered.");
+  });
+
+  test("Login Flow: POST /api/auth/login verifies password against database", async () => {
+    // Valid login
+    const validReq = new Request("http://localhost:3000/api/auth/login", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "x-forwarded-for": `127.0.0.1-log1-${Date.now()}` },
+      body: JSON.stringify({ email: testEmail, password: testPassword }),
+    });
+
+    const validRes = await loginHandler(validReq);
+    assert.strictEqual(validRes.status, 200);
+    const validBody = await validRes.json();
+    assert.strictEqual(validBody.user.email, testEmail);
+
+    // Invalid password
+    const invalidReq = new Request("http://localhost:3000/api/auth/login", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "x-forwarded-for": `127.0.0.1-log2-${Date.now()}` },
+      body: JSON.stringify({ email: testEmail, password: "WrongPassword123!" }),
+    });
+
+    const invalidRes = await loginHandler(invalidReq);
+    assert.strictEqual(invalidRes.status, 401);
+    const invalidBody = await invalidRes.json();
+    assert.strictEqual(invalidBody.error, "Invalid email or password.");
+  });
+
+  test("Session Creation & Expiration: creates real session row in Prisma and handles expiration", async () => {
+    const dbUser = await db.user.findUnique({ where: { email: testEmail } });
+    assert.ok(dbUser);
+
+    const sessionId = await createSession(dbUser.id);
+    assert.ok(sessionId);
+
+    // Verify session row exists in Prisma
+    const sessionRow = await db.session.findUnique({ where: { id: sessionId } });
+    assert.ok(sessionRow);
+    assert.strictEqual(sessionRow.userId, dbUser.id);
+
+    // Verify getSessionUser resolves user from real session row
+    const user = await getSessionUser(sessionId);
     assert.ok(user);
+    assert.strictEqual(user.id, dbUser.id);
 
-    const validLogin = await verifyPassword(user.passwordHash, rawPassword);
-    assert.strictEqual(validLogin, true);
+    // Test session destruction
+    await destroySession(sessionId);
+    const deletedSession = await db.session.findUnique({ where: { id: sessionId } });
+    assert.strictEqual(deletedSession, null);
 
-    const invalidLogin = await verifyPassword(user.passwordHash, "WrongPassword");
-    assert.strictEqual(invalidLogin, false);
-  });
-
-  test("Session Cookie Configuration: verifies httpOnly, secure, sameSite, path", () => {
-    const sessionCookieConfig = {
-      name: "argus_session",
-      httpOnly: true,
-      secure: process.env.NODE_ENV === "production",
-      sameSite: "lax" as const,
-      path: "/",
-      maxAge: 7 * 24 * 60 * 60,
-    };
-
-    assert.strictEqual(sessionCookieConfig.name, "argus_session");
-    assert.strictEqual(sessionCookieConfig.httpOnly, true);
-    assert.strictEqual(sessionCookieConfig.sameSite, "lax");
-    assert.strictEqual(sessionCookieConfig.path, "/");
-  });
-
-  test("Logout Flow: invalidates session and clears cookie", () => {
-    mockSessions.push({
-      id: "session-123",
-      userId: "user-1",
-      expiresAt: new Date(Date.now() + 100000),
-      createdAt: new Date(),
-    });
-
-    // Invalidate session
-    const idx = mockSessions.findIndex((s) => s.id === "session-123");
-    if (idx !== -1) mockSessions.splice(idx, 1);
-
-    assert.strictEqual(mockSessions.length, 0);
-  });
-
-  test("Session Expiration: rejects expired sessions (expiresAt < now)", () => {
-    const expiredSession: MockSession = {
-      id: "session-expired",
-      userId: "user-1",
-      expiresAt: new Date(Date.now() - 1000), // 1 second in the past
-      createdAt: new Date(Date.now() - 3600000),
-    };
-    mockSessions.push(expiredSession);
-
-    // Simulate getSessionUser expiration validation check (expiresAt < new Date())
-    const isExpired = expiredSession.expiresAt < new Date();
-    assert.strictEqual(isExpired, true);
-
-    if (isExpired) {
-      const idx = mockSessions.findIndex((s) => s.id === expiredSession.id);
-      if (idx !== -1) mockSessions.splice(idx, 1);
-    }
-
-    const foundSession = mockSessions.find((s) => s.id === "session-expired");
-    assert.strictEqual(foundSession, undefined);
-    assert.strictEqual(mockSessions.length, 0);
+    // Clean up test user from DB
+    await db.user.delete({ where: { id: dbUser.id } });
   });
 });

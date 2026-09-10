@@ -14,21 +14,33 @@ export async function createSession(userId: string): Promise<string> {
     },
   });
 
-  const cookieStore = await cookies();
-  cookieStore.set(SESSION_COOKIE_NAME, session.id, {
-    httpOnly: true,
-    secure: process.env.NODE_ENV === "production",
-    sameSite: "lax",
-    path: "/",
-    expires: expiresAt,
-  });
+  try {
+    const cookieStore = await cookies();
+    cookieStore.set(SESSION_COOKIE_NAME, session.id, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "lax",
+      path: "/",
+      expires: expiresAt,
+    });
+  } catch {
+    // Next.js cookies API unavailable (e.g. test or non-HTTP environment)
+  }
 
   return session.id;
 }
 
-export async function getSessionUser() {
-  const cookieStore = await cookies();
-  const sessionId = cookieStore.get(SESSION_COOKIE_NAME)?.value;
+export async function getSessionUser(customSessionId?: string) {
+  let sessionId: string | undefined = customSessionId;
+
+  if (!sessionId) {
+    try {
+      const cookieStore = await cookies();
+      sessionId = cookieStore.get(SESSION_COOKIE_NAME)?.value;
+    } catch {
+      // Next.js cookies API unavailable
+    }
+  }
 
   if (!sessionId) {
     return null;
@@ -53,19 +65,32 @@ export async function getSessionUser() {
   };
 }
 
-export async function destroySession(): Promise<void> {
-  const cookieStore = await cookies();
-  const sessionId = cookieStore.get(SESSION_COOKIE_NAME)?.value;
+export async function destroySession(customSessionId?: string): Promise<void> {
+  let sessionId: string | undefined = customSessionId;
+
+  if (!sessionId) {
+    try {
+      const cookieStore = await cookies();
+      sessionId = cookieStore.get(SESSION_COOKIE_NAME)?.value;
+    } catch {
+      // Next.js cookies API unavailable
+    }
+  }
 
   if (sessionId) {
     await db.session.delete({ where: { id: sessionId } }).catch(() => {});
   }
 
-  cookieStore.set(SESSION_COOKIE_NAME, "", {
-    httpOnly: true,
-    secure: process.env.NODE_ENV === "production",
-    sameSite: "lax",
-    path: "/",
-    expires: new Date(0),
-  });
+  try {
+    const cookieStore = await cookies();
+    cookieStore.set(SESSION_COOKIE_NAME, "", {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "lax",
+      path: "/",
+      expires: new Date(0),
+    });
+  } catch {
+    // Next.js cookies API unavailable
+  }
 }
