@@ -9,14 +9,28 @@ This layer is glue. It should contain almost no logic of its own — every real 
 
 ## 1. Core Routes
 
-| Route | Does |
-|---|---|
-| `POST /api/analyze` | Pull snapshot (`DATA.md`) → fan out to syndicate (`SYNDICATE.md`) → run consensus (`MATH.md` §1) → return result, unsealed |
-| `POST /api/record` | Seal a decision on-chain — client-signed path proxies to wallet, no-wallet path uses backend signer via `ChainAdapter` (`ONCHAIN.md` §1) |
-| `GET /api/reputation` | Read decision logs via `ChainAdapter.getDecisionLogs`, compute leaderboard from `MATH.md` §2 |
-| `GET /api/pricing/signal` | Entropy-priced API tier — calls `MATH.md` §3 |
-| `POST /api/auctions/bid` | Sealed-bid submission for early-access window — reserve price from `MATH.md` §4 |
-| `POST /api/vaults/*` | Deposit/withdraw/status — thin proxy to the vault contract, no fee math here (lives on-chain per `ONCHAIN.md` §4) |
+| Route | Method | Does |
+|---|---|---|
+| `/api/analyze` | `POST` | Pull snapshot (`DATA.md`) → fan out to syndicate (`SYNDICATE.md`) → run consensus (`MATH.md` §1) → return result, unsealed |
+| `/api/record` | `POST` | Seal a decision on-chain — client-signed path proxies to wallet, no-wallet path uses backend signer via `ChainAdapter` (`ONCHAIN.md` §1) |
+| `/api/pricing/signal` | `POST` | Entropy-priced signal — calculates price via `MATH.md` §3, checks user `creditsUsd`, deducts price or returns `402 Payment Required` if balance insufficient |
+| `/api/billing/balance` | `GET` | Return current logged-in user's `creditsUsd` credit balance |
+| `/api/billing/topup` | `POST` | Manual/admin test grant route to add credit balance (Stripe processing is a separate future phase) |
+| `/api/reputation` | `GET` | Read decision logs via `ChainAdapter.getDecisionLogs`, compute leaderboard from `MATH.md` §2 |
+| `/api/auctions/bid` | `POST` | Sealed-bid submission for early-access window — reserve price from `MATH.md` §4 |
+| `/api/vaults/*` | `POST` | Deposit/withdraw/status — thin proxy to the vault contract, no fee math here (lives on-chain per `ONCHAIN.md` §4) |
+
+---
+
+## 2. Billing & Credit Payment Enforcement (`/api/pricing/signal`)
+
+- **Prepaid Credit System**: Every user receives a starting credit balance (`creditsUsd: 25.0`) upon registration.
+- **Atomic Payment Loop**:
+  - `POST /api/pricing/signal` computes `priceUsd` via pure entropy math (`MATH.md` §3).
+  - Inside a Prisma atomic transaction (`db.$transaction`):
+    - If `creditsUsd < priceUsd`: Returns HTTP `402 Payment Required` with `{ error, priceUsd, currentBalanceUsd, requiredTopupUsd }`. **Zero credit deduction occurs.**
+    - If `creditsUsd >= priceUsd`: Deducts `priceUsd` from `creditsUsd` and returns the signal payload with `{ priceUsd, remainingCreditsUsd, paymentStatus: "paid_from_credits" }`.
+- **Top-up Route**: `POST /api/billing/topup` provides manual/admin credit grants for testing. Real payment gateway integration (Stripe/webhooks) is deliberately scoped as a separate future step.
 
 ---
 
