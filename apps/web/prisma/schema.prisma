@@ -16,6 +16,7 @@ model User {
   id             String          @id @default(uuid())
   email          String          @unique
   passwordHash   String          @map("password_hash")
+  creditsUsd     Float           @default(25.0) @map("credits_usd")
   createdAt      DateTime        @default(now()) @map("created_at")
   sessions       Session[]
   analyzeResults AnalyzeResult[]

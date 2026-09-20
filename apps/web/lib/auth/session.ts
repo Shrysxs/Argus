@@ -30,8 +30,18 @@ export async function createSession(userId: string): Promise<string> {
   return session.id;
 }
 
-export async function getSessionUser(customSessionId?: string) {
-  let sessionId: string | undefined = customSessionId;
+export async function getSessionUser(reqOrSessionId?: Request | string) {
+  let sessionId: string | undefined;
+
+  if (typeof reqOrSessionId === "string") {
+    sessionId = reqOrSessionId;
+  } else if (reqOrSessionId && typeof reqOrSessionId === "object" && "headers" in reqOrSessionId) {
+    const cookieHeader = reqOrSessionId.headers.get("cookie") || "";
+    const match = cookieHeader.match(new RegExp(`${SESSION_COOKIE_NAME}=([^;]+)`));
+    if (match) {
+      sessionId = match[1];
+    }
+  }
 
   if (!sessionId) {
     try {
@@ -61,6 +71,7 @@ export async function getSessionUser(customSessionId?: string) {
   return {
     id: session.user.id,
     email: session.user.email,
+    creditsUsd: session.user.creditsUsd,
     createdAt: session.user.createdAt,
   };
 }
