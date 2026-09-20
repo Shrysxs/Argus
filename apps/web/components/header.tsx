@@ -8,6 +8,7 @@ import { useWallet } from "@/hooks/use-wallet";
 interface AuthUser {
   id: string;
   email: string;
+  creditsUsd?: number;
 }
 
 export function Header() {
@@ -175,6 +176,10 @@ export function Header() {
           <div className="h-8 w-16 animate-pulse rounded bg-card/50" />
         ) : user ? (
           <div className="flex items-center gap-3">
+            <div className="inline-flex items-center gap-1.5 rounded-full border border-emerald-500/20 bg-emerald-500/10 px-2.5 py-1 text-xs font-medium text-emerald-400">
+              <span className="text-[10px]">💳</span>
+              <span>${(user.creditsUsd ?? 0).toFixed(2)}</span>
+            </div>
             <span className="text-xs text-muted-foreground">{user.email}</span>
             <button
               type="button"
