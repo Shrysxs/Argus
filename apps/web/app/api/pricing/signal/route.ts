@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { getSessionUser } from "@/lib/auth/session";
 import { checkRateLimit, recordFailedAttempt } from "@/lib/auth/rate-limit";
+import { db } from "@/lib/db";
 import {
   computeEntropy,
   computeInformationValue,
@@ -75,7 +76,7 @@ function validatePricingPayload(body: any): {
 
 export async function POST(req: Request) {
   // 1. Auth check
-  const user = await getSessionUser();
+  const user = await getSessionUser(req);
   if (!user) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
@@ -106,7 +107,6 @@ export async function POST(req: Request) {
     const { asset, consensus } = validated;
 
     // 3. Pure math computation via @argus/consensus (MATH.md §3)
-    // Zero LLM calls — reads directly off passed-in already-computed ConsensusResult
     const entropy = computeEntropy(consensus.breakdown);
     const informationValue = computeInformationValue(consensus.breakdown);
 
@@ -118,13 +118,56 @@ export async function POST(req: Request) {
       gamma: DEFAULT_GAMMA,
       volatilityMultiplier,
     });
+    const priceUsd = Number(rawPriceUsd.toFixed(2));
 
-    // 4. Return explainable payload (price is never a bare number)
+    // 4. Atomic Payment Enforcement via Prisma Transaction
+    const txResult = await db.$transaction(async (tx) => {
+      const dbUser = await tx.user.findUnique({
+        where: { id: user.id },
+        select: { creditsUsd: true },
+      });
+
+      const currentBalance = dbUser?.creditsUsd ?? 0.0;
+      if (currentBalance < priceUsd) {
+        return {
+          success: false as const,
+          currentBalanceUsd: Number(currentBalance.toFixed(2)),
+          requiredTopupUsd: Number((priceUsd - currentBalance).toFixed(2)),
+        };
+      }
+
+      const updatedUser = await tx.user.update({
+        where: { id: user.id },
+        data: { creditsUsd: { decrement: priceUsd } },
+        select: { creditsUsd: true },
+      });
+
+      return {
+        success: true as const,
+        remainingCreditsUsd: Number(updatedUser.creditsUsd.toFixed(2)),
+      };
+    });
+
+    if (!txResult.success) {
+      return NextResponse.json(
+        {
+          error: "Insufficient credit balance. Please top up your credits to access priced signal.",
+          priceUsd,
+          currentBalanceUsd: txResult.currentBalanceUsd,
+          requiredTopupUsd: txResult.requiredTopupUsd,
+        },
+        { status: 402 }
+      );
+    }
+
+    // 5. Return explainable payload + payment deduction proof
     return NextResponse.json({
       asset,
       recommendation: consensus.recommendation,
       confidence: consensus.confidence,
-      priceUsd: Number(rawPriceUsd.toFixed(2)),
+      priceUsd,
+      remainingCreditsUsd: txResult.remainingCreditsUsd,
+      paymentStatus: "paid_from_credits",
       informationValue: Number(informationValue.toFixed(4)),
       maxEntropy: Number(H_MAX.toFixed(4)),
       entropy: Number(entropy.toFixed(4)),
@@ -135,7 +178,6 @@ export async function POST(req: Request) {
         volatilityMultiplier,
         volatilitySource: "ATR_BTC_BASELINE_PLACEHOLDER",
       },
-      paymentStatus: "unwired_preview",
       degraded: Boolean(consensus.degraded),
     });
   } catch (err: unknown) {
