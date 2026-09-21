@@ -120,45 +120,57 @@ export async function POST(req: Request) {
     });
     const priceUsd = Number(rawPriceUsd.toFixed(2));
 
-    // 4. Atomic Payment Enforcement via Prisma Transaction
-    const txResult = await db.$transaction(async (tx) => {
-      const dbUser = await tx.user.findUnique({
-        where: { id: user.id },
-        select: { creditsUsd: true },
+    // 4. Atomic Payment Enforcement via Conditional UPDATE (WHERE creditsUsd >= priceUsd)
+    let updateResult: { count: number };
+    try {
+      updateResult = await db.user.updateMany({
+        where: {
+          id: user.id,
+          creditsUsd: { gte: priceUsd },
+        },
+        data: {
+          creditsUsd: { decrement: priceUsd },
+        },
       });
-
-      const currentBalance = dbUser?.creditsUsd ?? 0.0;
-      if (currentBalance < priceUsd) {
-        return {
-          success: false as const,
-          currentBalanceUsd: Number(currentBalance.toFixed(2)),
-          requiredTopupUsd: Number((priceUsd - currentBalance).toFixed(2)),
-        };
+    } catch (err: any) {
+      if (err?.code === "P1001") {
+        await new Promise((resolve) => setTimeout(resolve, 100));
+        updateResult = await db.user.updateMany({
+          where: {
+            id: user.id,
+            creditsUsd: { gte: priceUsd },
+          },
+          data: {
+            creditsUsd: { decrement: priceUsd },
+          },
+        });
+      } else {
+        throw err;
       }
+    }
 
-      const updatedUser = await tx.user.update({
+    if (updateResult.count === 0) {
+      const dbUser = await db.user.findUnique({
         where: { id: user.id },
-        data: { creditsUsd: { decrement: priceUsd } },
         select: { creditsUsd: true },
       });
-
-      return {
-        success: true as const,
-        remainingCreditsUsd: Number(updatedUser.creditsUsd.toFixed(2)),
-      };
-    });
-
-    if (!txResult.success) {
+      const currentBalance = dbUser?.creditsUsd ?? 0.0;
       return NextResponse.json(
         {
           error: "Insufficient credit balance. Please top up your credits to access priced signal.",
           priceUsd,
-          currentBalanceUsd: txResult.currentBalanceUsd,
-          requiredTopupUsd: txResult.requiredTopupUsd,
+          currentBalanceUsd: Number(currentBalance.toFixed(2)),
+          requiredTopupUsd: Number(Math.max(0, priceUsd - currentBalance).toFixed(2)),
         },
         { status: 402 }
       );
     }
+
+    const updatedUser = await db.user.findUnique({
+      where: { id: user.id },
+      select: { creditsUsd: true },
+    });
+    const remainingCreditsUsd = Number((updatedUser?.creditsUsd ?? 0).toFixed(2));
 
     // 5. Return explainable payload + payment deduction proof
     return NextResponse.json({
@@ -166,7 +178,7 @@ export async function POST(req: Request) {
       recommendation: consensus.recommendation,
       confidence: consensus.confidence,
       priceUsd,
-      remainingCreditsUsd: txResult.remainingCreditsUsd,
+      remainingCreditsUsd,
       paymentStatus: "paid_from_credits",
       informationValue: Number(informationValue.toFixed(4)),
       maxEntropy: Number(H_MAX.toFixed(4)),

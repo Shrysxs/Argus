@@ -17,6 +17,7 @@ model User {
   email          String          @unique
   passwordHash   String          @map("password_hash")
   creditsUsd     Float           @default(25.0) @map("credits_usd")
+  isAdmin        Boolean         @default(false) @map("is_admin")
   createdAt      DateTime        @default(now()) @map("created_at")
   sessions       Session[]
   analyzeResults AnalyzeResult[]

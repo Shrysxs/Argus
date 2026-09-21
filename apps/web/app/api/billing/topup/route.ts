@@ -8,6 +8,19 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
+  // Admin authorization check (isAdmin === true)
+  const dbUser = await db.user.findUnique({
+    where: { id: sessionUser.id },
+    select: { id: true, isAdmin: true },
+  });
+
+  if (!dbUser || !dbUser.isAdmin) {
+    return NextResponse.json(
+      { error: "Forbidden: Admin privileges required to grant credit top-ups." },
+      { status: 403 }
+    );
+  }
+
   let body: any = {};
   try {
     body = await req.json();
@@ -23,9 +36,11 @@ export async function POST(req: Request) {
     );
   }
 
+  const targetUserId = typeof body?.targetUserId === "string" && body.targetUserId.trim() ? body.targetUserId.trim() : sessionUser.id;
+
   // Atomically increment user credit balance
   const updatedUser = await db.user.update({
-    where: { id: sessionUser.id },
+    where: { id: targetUserId },
     data: { creditsUsd: { increment: rawAmount } },
     select: { id: true, email: true, creditsUsd: true },
   });

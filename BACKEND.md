@@ -24,13 +24,17 @@ This layer is glue. It should contain almost no logic of its own — every real 
 
 ## 2. Billing & Credit Payment Enforcement (`/api/pricing/signal`)
 
-- **Prepaid Credit System**: Every user receives a starting credit balance (`creditsUsd: 25.0`) upon registration.
-- **Atomic Payment Loop**:
+- **Prepaid Credit System**: Every user receives a starting credit balance (`creditsUsd: 25.0`) upon registration (`isAdmin` defaults to `false`).
+- **Atomic Concurrency & Anti-Double-Spend Protection**:
   - `POST /api/pricing/signal` computes `priceUsd` via pure entropy math (`MATH.md` §3).
-  - Inside a Prisma atomic transaction (`db.$transaction`):
-    - If `creditsUsd < priceUsd`: Returns HTTP `402 Payment Required` with `{ error, priceUsd, currentBalanceUsd, requiredTopupUsd }`. **Zero credit deduction occurs.**
-    - If `creditsUsd >= priceUsd`: Deducts `priceUsd` from `creditsUsd` and returns the signal payload with `{ priceUsd, remainingCreditsUsd, paymentStatus: "paid_from_credits" }`.
-- **Top-up Route**: `POST /api/billing/topup` provides manual/admin credit grants for testing. Real payment gateway integration (Stripe/webhooks) is deliberately scoped as a separate future step.
+  - Executes an **atomic conditional update** (`UPDATE users SET credits_usd = credits_usd - $price WHERE id = $id AND credits_usd >= $price` via `db.user.updateMany`):
+    - **Postgres Row-Locking**: During concurrent requests, PostgreSQL acquires an exclusive write lock on the target user row and evaluates `credits_usd >= price_usd`.
+    - **If `creditsUsd < priceUsd` (or row already decremented by concurrent request)**: `updateCount` returns `0`. The route returns HTTP `402 Payment Required` with `{ error, priceUsd, currentBalanceUsd, requiredTopupUsd }`. **Zero credit deduction occurs and balance NEVER drops below 0.**
+    - **If `creditsUsd >= priceUsd`**: Decrements `creditsUsd` atomically (`updateCount = 1`) and returns the signal payload with `{ priceUsd, remainingCreditsUsd, paymentStatus: "paid_from_credits" }`.
+- **Admin Top-Up Route (`POST /api/billing/topup`)**:
+  - Strictly gated by `isAdmin === true` on the authenticated user record.
+  - Returns HTTP `403 Forbidden` for non-admin users, preventing unauthorized self-grants.
+  - Real payment gateway integration (Stripe/webhooks) is deliberately scoped as a separate future step.
 
 ---
 
