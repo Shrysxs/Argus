@@ -138,8 +138,8 @@ export async function runSyndicate(
   const roster = options.roster || AGENT_ROSTER;
 
   const results = await Promise.all(
-    roster.map((persona) => runAgentPersona(persona, snapshot, options)),
+    roster.map((persona: AgentPersona) => runAgentPersona(persona, snapshot, options)),
   );
 
-  return results.filter((vote): vote is AgentVote => vote !== null);
+  return results.filter((vote: AgentVote | null): vote is AgentVote => vote !== null);
 }

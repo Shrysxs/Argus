@@ -1,17 +1,11 @@
 import { PrismaClient } from "@prisma/client";
 
-// Global singleton instance for Next.js hot-reloading in development
-const globalForPrisma = globalThis as unknown as {
-  prisma: any | undefined;
-};
-
 const basePrisma = new PrismaClient({
   log: process.env.NODE_ENV === "development" ? ["error", "warn"] : ["error"],
 });
 
-export const db =
-  globalForPrisma.prisma ??
-  basePrisma.$extends({
+function createExtendedClient() {
+  return basePrisma.$extends({
     query: {
       $allModels: {
         async $allOperations({ query, args }) {
@@ -36,6 +30,17 @@ export const db =
       },
     },
   });
+}
+
+type ExtendedPrismaClient = ReturnType<typeof createExtendedClient>;
+
+// Global singleton instance for Next.js hot-reloading in development
+const globalForPrisma = globalThis as unknown as {
+  prisma: ExtendedPrismaClient | undefined;
+};
+
+export const db: ExtendedPrismaClient =
+  globalForPrisma.prisma ?? createExtendedClient();
 
 if (process.env.NODE_ENV !== "production") {
   globalForPrisma.prisma = db;

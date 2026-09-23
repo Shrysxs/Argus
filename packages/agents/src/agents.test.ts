@@ -1,6 +1,6 @@
 import { test, describe } from "node:test";
 import assert from "node:assert/strict";
-import type { MarketDataSnapshot, AgentVote } from "@argus/shared-types";
+import type { MarketDataSnapshot, AgentVote, AgentPersona } from "@argus/shared-types";
 import { AGENT_ROSTER, runAgentPersona, runSyndicate } from "./index";
 
 
@@ -19,7 +19,7 @@ const mockSnapshot: MarketDataSnapshot = {
 describe("@argus/agents Roster & Runner", () => {
   test("AGENT_ROSTER contains 5 versioned agent personas", () => {
     assert.strictEqual(AGENT_ROSTER.length, 5);
-    const ids = AGENT_ROSTER.map((a) => a.id);
+    const ids = AGENT_ROSTER.map((a: AgentPersona) => a.id);
     assert.deepEqual(ids, [
       "value-hunter",
       "momentum-trader",
@@ -53,7 +53,7 @@ describe("@argus/agents Roster & Runner", () => {
 
   test("runSyndicate runs all 5 agents in parallel", async () => {
     const votes = await runSyndicate(mockSnapshot, {
-      mockFn: async (persona) => ({
+      mockFn: async (persona: AgentPersona) => ({
         agentId: persona.id,
         vote: persona.id === "risk-guardian" ? "HOLD" : "BUY",
         confidence: 80,
@@ -65,13 +65,13 @@ describe("@argus/agents Roster & Runner", () => {
     });
 
     assert.strictEqual(votes.length, 5);
-    const riskVote = votes.find((v) => v.agentId === "risk-guardian");
+    const riskVote = votes.find((v: AgentVote) => v.agentId === "risk-guardian");
     assert.strictEqual(riskVote?.vote, "HOLD");
   });
 
   test("runSyndicate handles partial agent failure cleanly", async () => {
     const votes = await runSyndicate(mockSnapshot, {
-      mockFn: async (persona) => {
+      mockFn: async (persona: AgentPersona) => {
         if (persona.id === "onchain-sleuth" || persona.id === "risk-guardian") {
           return null; // Simulated failure
         }
