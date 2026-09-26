@@ -46,23 +46,23 @@ function AgentCard({
   const icon = PERSONA_ICONS[agentId] || "🤖";
 
   return (
-    <div className={`group relative rounded-xl border p-4 transition-all duration-300 backdrop-blur-md ${
+    <div className={`relative rounded-xl border p-4 transition-colors ${
       isLoading
-        ? "border-purple-500/50 bg-slate-950/80 shadow-[0_0_15px_rgba(139,92,246,0.15)] animate-pulse"
+        ? "border-white/20 bg-[#0E1015] animate-pulse"
         : vote
-        ? "border-white/10 bg-slate-950/60 hover:border-purple-500/30 hover:shadow-[0_0_20px_rgba(139,92,246,0.1)]"
-        : "border-white/5 bg-slate-950/30 opacity-75"
+        ? "border-white/10 bg-[#0E1015] hover:border-white/20"
+        : "border-white/5 bg-[#090A0E] opacity-75"
     }`}>
       <div className="flex items-start justify-between gap-2">
         <div className="flex items-center gap-2">
-          <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-white/5 text-sm border border-white/10">
+          <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-[#16181F] text-sm border border-white/10">
             {icon}
           </span>
           <div>
-            <p className="text-xs font-semibold text-foreground tracking-tight">
+            <p className="text-xs font-bold text-white tracking-tight">
               {agent.name}
             </p>
-            <p className="text-[10px] font-mono text-purple-400/80">
+            <p className="text-[10px] font-sans text-neutral-400">
               {agent.framework}
             </p>
           </div>
@@ -82,10 +82,10 @@ function AgentCard({
       {/* Skeleton pulse while loading */}
       {isLoading && (
         <div className="mt-4 space-y-2">
-          <div className="h-2.5 w-3/4 animate-pulse rounded bg-purple-500/20" />
-          <div className="h-2.5 w-1/2 animate-pulse rounded bg-purple-500/20" />
-          <div className="h-2.5 w-5/6 animate-pulse rounded bg-purple-500/20" />
-          <div className="pt-2 text-[10px] font-mono text-purple-400 animate-pulse">
+          <div className="h-2.5 w-3/4 animate-pulse rounded bg-white/10" />
+          <div className="h-2.5 w-1/2 animate-pulse rounded bg-white/10" />
+          <div className="h-2.5 w-5/6 animate-pulse rounded bg-white/10" />
+          <div className="pt-2 text-[10px] font-sans text-neutral-400 animate-pulse">
             Scanning quantitative framework...
           </div>
         </div>
@@ -95,21 +95,27 @@ function AgentCard({
       {vote && (
         <div className="mt-4 space-y-3">
           <div className="space-y-1">
-            <div className="flex items-center justify-between text-[10px] font-mono text-muted-foreground">
+            <div className="flex items-center justify-between text-[10px] font-sans text-neutral-400">
               <span>Confidence</span>
-              <span className="font-bold text-foreground tabular-nums">
+              <span className="font-bold text-white tabular-nums">
                 {vote.confidence}%
               </span>
             </div>
-            <div className="h-1.5 overflow-hidden rounded-full bg-slate-900 border border-white/5">
+            <div className="h-1.5 overflow-hidden rounded-full bg-[#16181F] border border-white/5">
               <div
-                className="h-full rounded-full bg-gradient-to-r from-purple-500 to-cyan-400 transition-all duration-500"
+                className={`h-full rounded-full transition-all duration-300 ${
+                  vote.vote === "BUY"
+                    ? "bg-[#00C087]"
+                    : vote.vote === "SELL"
+                    ? "bg-[#F6465D]"
+                    : "bg-[#F59E0B]"
+                }`}
                 style={{ width: `${vote.confidence}%` }}
               />
             </div>
           </div>
 
-          <p className="text-xs leading-relaxed text-muted-foreground/90 font-sans">
+          <p className="text-xs leading-relaxed text-neutral-300 font-sans">
             {vote.reasoning}
           </p>
 
@@ -118,7 +124,7 @@ function AgentCard({
               {vote.dataPointsCited.map((cite, i) => (
                 <span
                   key={i}
-                  className="rounded bg-purple-500/10 border border-purple-500/20 px-1.5 py-0.5 text-[10px] font-mono text-purple-300"
+                  className="rounded bg-[#16181F] border border-white/10 px-1.5 py-0.5 text-[10px] font-sans text-neutral-300"
                 >
                   {cite}
                 </span>
@@ -126,7 +132,7 @@ function AgentCard({
             </div>
           )}
 
-          <div className="mt-2 flex items-center justify-between pt-2 border-t border-white/5 text-[9px] font-mono text-muted-foreground/60">
+          <div className="mt-2 flex items-center justify-between pt-2 border-t border-white/5 text-[9px] font-sans text-neutral-500">
             <span>{vote.promptVersion}</span>
             <span>{vote.modelUsed}</span>
           </div>
@@ -136,7 +142,7 @@ function AgentCard({
       {/* Dormant — no data, not loading */}
       {!isLoading && !vote && (
         <div className="mt-4 pt-2">
-          <p className="text-[11px] font-mono text-muted-foreground/40 italic">
+          <p className="text-[11px] font-sans text-neutral-500 italic">
             Awaiting deliberation signal…
           </p>
         </div>
@@ -236,7 +242,7 @@ export function AnalyzePanel({
     <div className="space-y-8">
       {/* Degraded mode warning banner */}
       {state.status === "success" && state.result.degraded && (
-        <div className="rounded-lg border border-amber-400/30 bg-amber-400/10 px-4 py-3 text-amber-400">
+        <div className="rounded-lg border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-amber-400">
           <p className="text-xs font-medium">
             ⚠️ Degraded Syndicate Round: Only {state.result.responsiveCount ?? votes.length} of 5 agents responded.
             Consensus threshold (3/5) was partially degraded.
@@ -252,31 +258,31 @@ export function AnalyzePanel({
         </div>
 
         {/* Right Column (5 Cols): Consensus & Sealing Box */}
-        <div className="lg:col-span-5 h-[480px] flex flex-col justify-between rounded-xl border border-white/10 bg-slate-950/60 p-6 backdrop-blur-md shadow-2xl">
+        <div className="lg:col-span-5 h-[480px] flex flex-col justify-between rounded-xl border border-white/10 bg-[#0E1015] p-6">
           <div>
             <div className="flex items-center justify-between border-b border-white/10 pb-3">
               <div>
-                <span className="text-[10px] font-mono uppercase tracking-widest text-muted-foreground">
+                <span className="text-[10px] font-sans uppercase tracking-widest text-neutral-400">
                   Consensus Engine
                 </span>
-                <h2 className="text-lg font-bold text-foreground">
+                <h2 className="text-lg font-bold text-white">
                   Syndicate Deliberation
                 </h2>
               </div>
-              <span className="rounded-full bg-purple-500/10 px-2.5 py-1 text-[10px] font-mono text-purple-400 border border-purple-500/20">
+              <span className="rounded-full bg-[#16181F] px-2.5 py-1 text-[10px] font-sans text-neutral-300 border border-white/10">
                 5 Personas
               </span>
             </div>
 
             {state.status === "idle" && (
               <div className="my-12 text-center space-y-2">
-                <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-purple-500/10 border border-purple-500/20 text-purple-400">
+                <div className="mx-auto flex h-10 w-10 items-center justify-center rounded-lg bg-[#16181F] border border-white/10 text-white font-bold">
                   ⚡
                 </div>
-                <p className="text-sm font-medium text-foreground">
+                <p className="text-sm font-semibold text-white">
                   Awaiting Deliberation Trigger
                 </p>
-                <p className="text-xs text-muted-foreground/70 max-w-xs mx-auto">
+                <p className="text-xs text-neutral-400 max-w-xs mx-auto">
                   Click &quot;Analyze&quot; above to run the 5 specialized AI agents across quantitative metrics for {asset}.
                 </p>
               </div>
@@ -286,7 +292,7 @@ export function AnalyzePanel({
               <div className="my-12 text-center space-y-3">
                 <div className="mx-auto flex h-12 w-12 items-center justify-center">
                   <svg
-                    className="h-8 w-8 animate-spin text-[var(--accent-glow)]"
+                    className="h-8 w-8 animate-spin text-white"
                     viewBox="0 0 24 24"
                     fill="none"
                   >
@@ -305,21 +311,21 @@ export function AnalyzePanel({
                     />
                   </svg>
                 </div>
-                <p className="text-sm font-medium text-foreground">
+                <p className="text-sm font-semibold text-white">
                   Deliberating across 5 frameworks...
                 </p>
-                <p className="text-xs text-muted-foreground">
+                <p className="text-xs text-neutral-400">
                   Value • Momentum • Macro • On-chain • Risk
                 </p>
               </div>
             )}
 
             {state.status === "error" && (
-              <div className="my-8 rounded-lg border border-red-400/20 bg-red-400/5 px-5 py-4 text-center">
+              <div className="my-8 rounded-lg border border-red-500/30 bg-red-500/10 px-5 py-4 text-center">
                 <p className="text-sm font-medium text-red-400">
                   Analysis unavailable
                 </p>
-                <p className="mt-1 text-xs text-red-400/70">{state.message}</p>
+                <p className="mt-1 text-xs text-red-400/80">{state.message}</p>
               </div>
             )}
 
@@ -327,26 +333,37 @@ export function AnalyzePanel({
               <div className="mt-4 space-y-4">
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-xs font-mono uppercase tracking-widest text-muted-foreground">
+                    <p className="text-[10px] font-sans uppercase tracking-widest text-neutral-400">
                       Recommendation
                     </p>
-                    <p className="mt-1 text-3xl font-extrabold tracking-tight">
+                    <p className={`mt-1 text-3xl font-extrabold tracking-tight ${
+                      state.result.recommendation === "BUY"
+                        ? "text-[#00C087]"
+                        : state.result.recommendation === "SELL"
+                        ? "text-[#F6465D]"
+                        : "text-[#F59E0B]"
+                    }`}>
                       {state.result.recommendation}
                     </p>
                   </div>
                   <div className="text-right">
-                    <p className="text-xs font-mono text-muted-foreground">Confidence Score</p>
-                    <p className="text-3xl font-extrabold tabular-nums text-[var(--accent-glow)]">
+                    <p className="text-[10px] font-sans text-neutral-400">Confidence Score</p>
+                    <p className="text-3xl font-extrabold tabular-nums text-white">
                       {state.result.confidence.toFixed(1)}%
                     </p>
                   </div>
                 </div>
 
+                {/* Prominent Research Disclaimer directly next to signal output */}
+                <div className="rounded-lg border border-white/10 bg-[#16181F] p-2.5 text-center text-[11px] font-sans text-neutral-300">
+                  <span className="font-semibold text-white">Research & educational tool only</span> — not financial advice.
+                </div>
+
                 {/* Vote breakdown bar */}
-                <div className="space-y-1.5 pt-2">
-                  <div className="flex justify-between text-xs text-muted-foreground">
+                <div className="space-y-1.5 pt-1">
+                  <div className="flex justify-between text-xs text-neutral-400 font-sans">
                     <span>Vote Breakdown</span>
-                    <span className="font-mono">Weighted Consensus</span>
+                    <span>Weighted Consensus</span>
                   </div>
                   <div className="flex gap-4 text-xs">
                     {(
@@ -355,16 +372,16 @@ export function AnalyzePanel({
                         number,
                       ][]
                     ).map(([direction, weight]) => (
-                      <span key={direction} className="font-mono">
+                      <span key={direction} className="font-mono text-neutral-300">
                         {direction}:{" "}
-                        <strong className="text-foreground">{weight.toFixed(0)}</strong>
+                        <strong className="text-white">{weight.toFixed(0)}</strong>
                       </span>
                     ))}
                   </div>
                 </div>
 
                 {state.result.disagreement && (
-                  <div className="rounded border border-amber-400/20 bg-amber-400/10 px-3 py-1.5 text-xs font-medium text-amber-400">
+                  <div className="rounded-lg border border-amber-500/30 bg-amber-500/10 px-3 py-1.5 text-xs font-medium text-amber-400">
                     ⚠️ High Disagreement: Committee votes are split near threshold.
                   </div>
                 )}
@@ -378,7 +395,7 @@ export function AnalyzePanel({
               {!sealTxHash && (
                 <div className="space-y-3">
                   <div className="space-y-1.5">
-                    <span className="text-xs font-medium text-muted-foreground">
+                    <span className="text-xs font-medium text-neutral-400 font-sans">
                       Select Sealing Signer Path:
                     </span>
                     <div className="flex flex-wrap gap-2 text-xs">
@@ -391,13 +408,13 @@ export function AnalyzePanel({
                         }}
                         className={`flex items-center gap-2 rounded-lg border px-3 py-1.5 transition-all ${
                           sealMode === "client"
-                            ? "border-[var(--accent-glow)] bg-[var(--accent-glow)]/10 text-foreground font-medium"
-                            : "border-border/50 bg-card/30 text-muted-foreground hover:text-foreground"
+                            ? "border-white bg-white text-black font-semibold"
+                            : "border-white/10 bg-[#16181F] text-neutral-400 hover:text-white"
                         }`}
                       >
-                        <span className={`h-2 w-2 rounded-full ${sealMode === "client" ? "bg-[var(--accent-glow)]" : "bg-muted"}`} />
+                        <span className={`h-2 w-2 rounded-full ${sealMode === "client" ? "bg-black" : "bg-neutral-500"}`} />
                         <span>Client Wallet</span>
-                        <span className="text-[10px] text-muted-foreground">
+                        <span className={`text-[10px] ${sealMode === "client" ? "text-neutral-700" : "text-neutral-500"}`}>
                           ({address ? truncatedAddress : "Not Connected"})
                         </span>
                       </button>
@@ -411,27 +428,27 @@ export function AnalyzePanel({
                         }}
                         className={`flex items-center gap-2 rounded-lg border px-3 py-1.5 transition-all ${
                           sealMode === "backend"
-                            ? "border-[var(--accent-glow)] bg-[var(--accent-glow)]/10 text-foreground font-medium"
-                            : "border-border/50 bg-card/30 text-muted-foreground hover:text-foreground"
+                            ? "border-white bg-white text-black font-semibold"
+                            : "border-white/10 bg-[#16181F] text-neutral-400 hover:text-white"
                         }`}
                       >
-                        <span className={`h-2 w-2 rounded-full ${sealMode === "backend" ? "bg-[var(--accent-glow)]" : "bg-muted"}`} />
+                        <span className={`h-2 w-2 rounded-full ${sealMode === "backend" ? "bg-black" : "bg-neutral-500"}`} />
                         <span>Backend Signer</span>
-                        <span className="text-[10px] text-muted-foreground">
+                        <span className={`text-[10px] ${sealMode === "backend" ? "text-neutral-700" : "text-neutral-500"}`}>
                           (System Keystore)
                         </span>
                       </button>
                     </div>
 
-                    <div className="text-[11px] text-muted-foreground/80 pt-0.5">
+                    <div className="text-[11px] text-neutral-400 pt-0.5 font-sans">
                       {sealMode === "client" ? (
                         <span>
-                          <strong className="text-foreground font-medium">Signer:</strong> {address ? address : "Connect Wallet"} •{" "}
+                          <strong className="text-white font-medium">Signer:</strong> {address ? address : "Connect Wallet"} •{" "}
                           <strong className="text-amber-400 font-medium">Gas:</strong> User Pays (~0.0001 MON)
                         </span>
                       ) : (
                         <span>
-                          <strong className="text-foreground font-medium">Signer:</strong> System Keystore •{" "}
+                          <strong className="text-white font-medium">Signer:</strong> System Keystore •{" "}
                           <strong className="text-emerald-400 font-medium">Gas:</strong> Protocol Pays (0 MON for User)
                         </span>
                       )}
@@ -442,7 +459,7 @@ export function AnalyzePanel({
                     <button
                       type="button"
                       onClick={connect}
-                      className="w-full rounded-lg bg-[var(--accent-glow)] py-2 text-xs font-medium text-[oklch(0.15_0_0)] transition-opacity hover:opacity-90"
+                      className="w-full rounded-lg bg-white py-2 text-xs font-semibold text-black transition-colors hover:bg-neutral-200"
                     >
                       Connect Wallet to Seal
                     </button>
@@ -450,7 +467,7 @@ export function AnalyzePanel({
                     <button
                       type="button"
                       onClick={switchNetwork}
-                      className="w-full rounded-lg border border-amber-500/40 bg-amber-500/10 py-2 text-xs font-medium text-amber-400 transition-colors hover:bg-amber-500/20"
+                      className="w-full rounded-lg border border-amber-500/40 bg-amber-500/10 py-2 text-xs font-semibold text-amber-400 transition-colors hover:bg-amber-500/20"
                     >
                       Switch to Monad Testnet
                     </button>
@@ -459,7 +476,7 @@ export function AnalyzePanel({
                       type="button"
                       disabled={sealing}
                       onClick={handleSeal}
-                      className="w-full rounded-lg bg-[var(--accent-glow)] py-2 text-xs font-medium text-[oklch(0.15_0_0)] transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
+                      className="w-full rounded-lg bg-white py-2 text-xs font-semibold text-black transition-colors hover:bg-neutral-200 disabled:cursor-not-allowed disabled:opacity-50"
                     >
                       {sealing
                         ? "Sealing On-Chain…"
@@ -472,8 +489,8 @@ export function AnalyzePanel({
               )}
 
               {sealTxHash && (
-                <div className="flex items-center gap-2 rounded-md border border-emerald-500/30 bg-emerald-500/10 px-4 py-2 text-xs text-emerald-400">
-                  <span className="font-medium">✓ Sealed On-Chain ({sealMode === "client" ? "Client Signed" : "Backend Signed"}):</span>
+                <div className="flex items-center gap-2 rounded-lg border border-emerald-500/30 bg-emerald-500/10 px-4 py-2 text-xs text-emerald-400">
+                  <span className="font-semibold">✓ Sealed On-Chain ({sealMode === "client" ? "Client Signed" : "Backend Signed"}):</span>
                   <a
                     href={`https://testnet.monadexplorer.com/tx/${sealTxHash}`}
                     target="_blank"
@@ -486,8 +503,8 @@ export function AnalyzePanel({
               )}
 
               {sealError && (
-                <div className="rounded-md border border-red-500/30 bg-red-500/10 px-4 py-2 text-xs text-red-400">
-                  <span className="font-medium">Sealing Error:</span> {sealError}
+                <div className="rounded-lg border border-red-500/30 bg-red-500/10 px-4 py-2 text-xs text-red-400">
+                  <span className="font-semibold">Sealing Error:</span> {sealError}
                 </div>
               )}
             </div>
@@ -497,16 +514,16 @@ export function AnalyzePanel({
 
       {/* Committee Chamber — 5 Agent Deliberation Cards */}
       <div className="pt-6">
-        <div className="flex items-center justify-between mb-4">
+        <div className="flex items-center justify-between mb-4 border-b border-white/10 pb-3">
           <div>
-            <h2 className="text-xs font-mono uppercase tracking-widest text-muted-foreground">
+            <h2 className="text-xs font-sans uppercase tracking-widest text-neutral-400">
               The AI Investment Committee
             </h2>
-            <p className="text-sm font-semibold text-foreground">
+            <p className="text-sm font-semibold text-white">
               Specialized Agent Personas & Deliberation Cards
             </p>
           </div>
-          <span className="text-xs font-mono text-muted-foreground/60">
+          <span className="text-xs font-sans text-neutral-400">
             5/5 Frameworks Active
           </span>
         </div>

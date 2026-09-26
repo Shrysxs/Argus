@@ -85,53 +85,58 @@ export default function HistoryPage() {
   }, [fetchHistory, currentPage]);
 
   return (
-    <div className="min-h-screen bg-[var(--background)] text-foreground font-sans">
+    <div className="min-h-screen bg-[#000000] text-white font-sans">
       <Header />
 
-      <main className="mx-auto max-w-6xl px-6 py-8 md:px-10">
+      <main className="mx-auto max-w-6xl px-4 py-8 sm:px-6 md:px-8">
         {/* Page Header */}
-        <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between border-b border-white/10 pb-6 mb-8">
+        <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between border-b border-white/10 pb-6 mb-6">
           <div>
-            <span className="text-xs font-mono uppercase tracking-widest text-purple-400">
+            <span className="text-xs font-sans uppercase tracking-widest text-neutral-400">
               Audit Trail & Verification
             </span>
-            <h1 className="text-2xl md:text-3xl font-extrabold tracking-tight text-foreground">
+            <h1 className="text-2xl md:text-3xl font-extrabold tracking-tight text-white">
               Syndicate Deliberation History
             </h1>
-            <p className="mt-1 text-sm text-muted-foreground">
+            <p className="mt-1 text-xs text-neutral-400">
               Verifiable log of AI syndicate analysis runs and on-chain sealing status.
             </p>
           </div>
           <Link
             href="/syndicate"
-            className="inline-flex h-9 items-center justify-center rounded-lg bg-[var(--accent-glow)] px-4 text-xs font-semibold text-[oklch(0.15_0_0)] transition-opacity hover:opacity-90 self-start md:self-auto"
+            className="inline-flex h-9 items-center justify-center rounded-lg bg-white px-4 text-xs font-bold text-black transition-colors hover:bg-neutral-200 self-start md:self-auto"
           >
             + New Analysis
           </Link>
         </div>
 
+        {/* Prominent Research & Educational Tool Disclaimer */}
+        <div className="mb-6 rounded-lg border border-white/10 bg-[#0E1015] p-3 text-center text-xs text-neutral-300">
+          <span className="font-bold text-white">Research & educational logs</span> — for historical auditing purposes only, not financial advice.
+        </div>
+
         {/* Content Section */}
         {unauthorized ? (
-          <div className="my-16 text-center space-y-4 rounded-xl border border-white/10 bg-slate-950/60 p-12 backdrop-blur-md">
-            <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-purple-500/10 text-purple-400">
+          <div className="my-16 text-center space-y-4 rounded-xl border border-white/10 bg-[#0E1015] p-12">
+            <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-[#16181F] text-white font-bold border border-white/10">
               🔒
             </div>
-            <h2 className="text-xl font-bold text-foreground">Authentication Required</h2>
-            <p className="text-sm text-muted-foreground max-w-md mx-auto">
+            <h2 className="text-xl font-bold text-white">Authentication Required</h2>
+            <p className="text-xs text-neutral-400 max-w-md mx-auto">
               Please log in to your Argus account to view your private syndicate analysis history.
             </p>
             <div className="pt-2">
               <Link
                 href="/login"
-                className="inline-flex h-9 items-center rounded-lg bg-[var(--accent-glow)] px-5 text-xs font-semibold text-[oklch(0.15_0_0)]"
+                className="inline-flex h-9 items-center rounded-lg bg-white px-5 text-xs font-bold text-black transition-colors hover:bg-neutral-200"
               >
-                Log In
+                Log in
               </Link>
             </div>
           </div>
         ) : error ? (
-          <div className="my-8 rounded-lg border border-red-400/20 bg-red-400/5 p-6 text-center">
-            <p className="text-sm font-medium text-red-400">{error}</p>
+          <div className="my-8 rounded-lg border border-red-500/30 bg-red-500/10 p-6 text-center">
+            <p className="text-xs font-medium text-red-400">{error}</p>
             <button
               onClick={() => fetchHistory(currentPage)}
               className="mt-4 text-xs underline text-red-300 hover:text-red-200"
@@ -144,20 +149,20 @@ export default function HistoryPage() {
             {[1, 2, 3].map((i) => (
               <div
                 key={i}
-                className="h-36 rounded-xl border border-white/5 bg-slate-950/40 p-6 animate-pulse"
+                className="h-36 rounded-xl border border-white/10 bg-[#0E1015] p-6 animate-pulse"
               />
             ))}
           </div>
         ) : records.length === 0 ? (
-          <div className="my-16 text-center space-y-3 rounded-xl border border-white/10 bg-slate-950/40 p-12 backdrop-blur-md">
-            <p className="text-base font-semibold text-foreground">No Deliberation Runs Found</p>
-            <p className="text-xs text-muted-foreground max-w-md mx-auto">
+          <div className="my-16 text-center space-y-3 rounded-xl border border-white/10 bg-[#0E1015] p-12">
+            <p className="text-base font-semibold text-white">No Deliberation Runs Found</p>
+            <p className="text-xs text-neutral-400 max-w-md mx-auto">
               You haven&apos;t executed any syndicate analysis runs yet. Trigger your first deliberation on the Syndicate page.
             </p>
             <div className="pt-2">
               <Link
                 href="/syndicate"
-                className="inline-flex h-8 items-center rounded-lg border border-purple-500/30 bg-purple-500/10 px-4 text-xs font-medium text-purple-300 hover:bg-purple-500/20"
+                className="inline-flex h-9 items-center rounded-lg border border-white/10 bg-[#16181F] px-4 text-xs font-semibold text-white hover:bg-[#1F222B]"
               >
                 Go to Syndicate
               </Link>
@@ -169,11 +174,11 @@ export default function HistoryPage() {
               {records.map((item) => (
                 <div
                   key={item.id}
-                  className="rounded-xl border border-white/10 bg-slate-950/60 p-6 backdrop-blur-md transition-all hover:border-purple-500/30 shadow-lg space-y-4"
+                  className="rounded-xl border border-white/10 bg-[#0E1015] p-6 transition-colors hover:border-white/20 space-y-4"
                 >
-                  <div className="flex flex-wrap items-center justify-between gap-3 border-b border-white/5 pb-4">
+                  <div className="flex flex-wrap items-center justify-between gap-3 border-b border-white/10 pb-4">
                     <div className="flex items-center gap-3">
-                      <span className="rounded-lg bg-purple-500/10 border border-purple-500/20 px-2.5 py-1 font-mono text-xs font-bold text-purple-300">
+                      <span className="rounded-lg bg-[#16181F] border border-white/10 px-2.5 py-1 font-mono text-xs font-bold text-white">
                         {item.asset}
                       </span>
                       <span
@@ -183,9 +188,9 @@ export default function HistoryPage() {
                       >
                         {item.recommendation}
                       </span>
-                      <span className="text-xs font-mono text-muted-foreground">
+                      <span className="text-xs font-sans text-neutral-400">
                         Confidence:{" "}
-                        <strong className="text-[var(--accent-glow)] font-bold">
+                        <strong className="text-white font-bold">
                           {item.confidence.toFixed(1)}%
                         </strong>
                       </span>
@@ -193,18 +198,18 @@ export default function HistoryPage() {
 
                     <div className="flex items-center gap-3 text-xs">
                       {item.sealed ? (
-                        <span className="inline-flex items-center gap-1.5 rounded-full border border-emerald-500/30 bg-emerald-500/10 px-3 py-1 text-[11px] font-mono text-emerald-400">
+                        <span className="inline-flex items-center gap-1.5 rounded-full border border-emerald-500/30 bg-emerald-500/10 px-3 py-1 text-[11px] font-sans text-emerald-400">
                           <span className="h-1.5 w-1.5 rounded-full bg-emerald-400" />
                           Sealed On-Chain
                         </span>
                       ) : (
-                        <span className="inline-flex items-center gap-1.5 rounded-full border border-amber-500/30 bg-amber-500/10 px-3 py-1 text-[11px] font-mono text-amber-400">
+                        <span className="inline-flex items-center gap-1.5 rounded-full border border-amber-500/30 bg-amber-500/10 px-3 py-1 text-[11px] font-sans text-amber-400">
                           <span className="h-1.5 w-1.5 rounded-full bg-amber-400" />
                           Unsealed (Off-Chain)
                         </span>
                       )}
 
-                      <span className="font-mono text-muted-foreground/60 text-[11px]">
+                      <span className="font-mono text-neutral-500 text-[11px]">
                         {new Date(item.createdAt).toLocaleString()}
                       </span>
                     </div>
@@ -212,27 +217,27 @@ export default function HistoryPage() {
 
                   <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 text-xs">
                     <div>
-                      <span className="text-[10px] font-mono uppercase tracking-wider text-muted-foreground block mb-1">
+                      <span className="text-[10px] font-sans uppercase tracking-wider text-neutral-400 block mb-1">
                         Weighted Consensus Breakdown
                       </span>
                       <div className="flex gap-3 font-mono">
-                        <span>BUY: <strong className="text-foreground">{item.breakdown?.BUY ?? 0}</strong></span>
-                        <span>SELL: <strong className="text-foreground">{item.breakdown?.SELL ?? 0}</strong></span>
-                        <span>HOLD: <strong className="text-foreground">{item.breakdown?.HOLD ?? 0}</strong></span>
+                        <span>BUY: <strong className="text-white">{item.breakdown?.BUY ?? 0}</strong></span>
+                        <span>SELL: <strong className="text-white">{item.breakdown?.SELL ?? 0}</strong></span>
+                        <span>HOLD: <strong className="text-white">{item.breakdown?.HOLD ?? 0}</strong></span>
                       </div>
                     </div>
 
                     <div>
-                      <span className="text-[10px] font-mono uppercase tracking-wider text-muted-foreground block mb-1">
+                      <span className="text-[10px] font-sans uppercase tracking-wider text-neutral-400 block mb-1">
                         Data Snapshot Hash
                       </span>
-                      <span className="font-mono text-muted-foreground truncate block max-w-xs" title={item.dataSnapshotHash}>
+                      <span className="font-mono text-neutral-400 truncate block max-w-xs" title={item.dataSnapshotHash}>
                         {item.dataSnapshotHash.slice(0, 14)}...{item.dataSnapshotHash.slice(-10)}
                       </span>
                     </div>
 
                     <div>
-                      <span className="text-[10px] font-mono uppercase tracking-wider text-muted-foreground block mb-1">
+                      <span className="text-[10px] font-sans uppercase tracking-wider text-neutral-400 block mb-1">
                         On-Chain Transaction
                       </span>
                       {item.sealed && item.txHash ? (
@@ -240,12 +245,12 @@ export default function HistoryPage() {
                           href={`https://testnet.monadexplorer.com/tx/${item.txHash}`}
                           target="_blank"
                           rel="noreferrer"
-                          className="font-mono text-purple-400 underline hover:text-purple-300 truncate block"
+                          className="font-mono text-white underline hover:text-neutral-300 truncate block"
                         >
                           {item.txHash.slice(0, 10)}...{item.txHash.slice(-8)} ↗
                         </a>
                       ) : (
-                        <span className="font-mono text-muted-foreground/50 italic">
+                        <span className="font-mono text-neutral-500 italic">
                           Not recorded on Monad
                         </span>
                       )}
@@ -253,7 +258,7 @@ export default function HistoryPage() {
                   </div>
 
                   {item.disagreement && (
-                    <div className="rounded border border-amber-400/20 bg-amber-400/5 px-3 py-1.5 text-[11px] text-amber-400 font-mono">
+                    <div className="rounded-lg border border-amber-500/30 bg-amber-500/10 px-3 py-1.5 text-[11px] text-amber-400 font-sans">
                       ⚠️ Split Decision: Committee votes were heavily fragmented.
                     </div>
                   )}
@@ -263,22 +268,22 @@ export default function HistoryPage() {
 
             {/* Pagination Controls */}
             {pagination.totalPages > 1 && (
-              <div className="flex items-center justify-between border-t border-white/10 pt-4 text-xs font-mono">
-                <span className="text-muted-foreground">
+              <div className="flex items-center justify-between border-t border-white/10 pt-4 text-xs font-sans">
+                <span className="text-neutral-400">
                   Page {pagination.page} of {pagination.totalPages} ({pagination.totalCount} total runs)
                 </span>
                 <div className="flex gap-2">
                   <button
                     disabled={currentPage <= 1}
                     onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
-                    className="rounded-lg border border-border/50 bg-card/40 px-3 py-1.5 text-foreground hover:bg-card disabled:opacity-40 disabled:cursor-not-allowed"
+                    className="rounded-lg border border-white/10 bg-[#12141A] px-3 py-1.5 text-white hover:bg-[#1A1D26] disabled:opacity-40 disabled:cursor-not-allowed font-medium"
                   >
                     ← Previous
                   </button>
                   <button
                     disabled={currentPage >= pagination.totalPages}
                     onClick={() => setCurrentPage((p) => p + 1)}
-                    className="rounded-lg border border-border/50 bg-card/40 px-3 py-1.5 text-foreground hover:bg-card disabled:opacity-40 disabled:cursor-not-allowed"
+                    className="rounded-lg border border-white/10 bg-[#12141A] px-3 py-1.5 text-white hover:bg-[#1A1D26] disabled:opacity-40 disabled:cursor-not-allowed font-medium"
                   >
                     Next →
                   </button>
