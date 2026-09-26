@@ -4,6 +4,13 @@ import { db } from "../db";
 export const SESSION_COOKIE_NAME = "argus_session";
 export const SESSION_DURATION_MS = 7 * 24 * 60 * 60 * 1000; // 7 days
 
+function getIsSecureCookie(): boolean {
+  if (process.env.COOKIE_SECURE !== undefined) {
+    return process.env.COOKIE_SECURE === "true";
+  }
+  return process.env.NODE_ENV === "production" && process.env.NEXT_PUBLIC_APP_URL?.startsWith("https") === true;
+}
+
 export async function createSession(userId: string): Promise<string> {
   const expiresAt = new Date(Date.now() + SESSION_DURATION_MS);
 
@@ -18,7 +25,7 @@ export async function createSession(userId: string): Promise<string> {
     const cookieStore = await cookies();
     cookieStore.set(SESSION_COOKIE_NAME, session.id, {
       httpOnly: true,
-      secure: process.env.NODE_ENV === "production",
+      secure: getIsSecureCookie(),
       sameSite: "lax",
       path: "/",
       expires: expiresAt,
@@ -96,7 +103,7 @@ export async function destroySession(customSessionId?: string): Promise<void> {
     const cookieStore = await cookies();
     cookieStore.set(SESSION_COOKIE_NAME, "", {
       httpOnly: true,
-      secure: process.env.NODE_ENV === "production",
+      secure: getIsSecureCookie(),
       sameSite: "lax",
       path: "/",
       expires: new Date(0),
