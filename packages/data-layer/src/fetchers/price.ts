@@ -14,12 +14,24 @@ export interface PriceData {
 // coin id (e.g. "bitcoin", "ethereum"), not the ticker symbol.
 const COINGECKO_URL = "https://api.coingecko.com/api/v3/simple/price";
 
+const SYMBOL_MAP: Record<string, string> = {
+  btc: "bitcoin",
+  bitcoin: "bitcoin",
+  eth: "ethereum",
+  ethereum: "ethereum",
+  sol: "solana",
+  solana: "solana",
+};
+
 export async function fetchPrice(
   coinId: string,
   fetchFn: typeof fetch = fetch
 ): Promise<PriceData> {
+  const normalizedId = coinId.trim().toLowerCase();
+  const cgId = SYMBOL_MAP[normalizedId] ?? normalizedId;
+
   const params = new URLSearchParams({
-    ids: coinId,
+    ids: cgId,
     vs_currencies: "usd",
     include_market_cap: "true",
     include_24hr_vol: "true",
@@ -41,7 +53,7 @@ export async function fetchPrice(
   }
 
   const json = (await res.json()) as Record<string, unknown>;
-  const coin = json[coinId] as Record<string, unknown> | undefined;
+  const coin = json[cgId] as Record<string, unknown> | undefined;
 
   if (!coin) {
     // CoinGecko returns an empty object for unknown ids rather than a 4xx.

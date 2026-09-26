@@ -8,7 +8,14 @@ function getIsSecureCookie(): boolean {
   if (process.env.COOKIE_SECURE !== undefined) {
     return process.env.COOKIE_SECURE === "true";
   }
-  return process.env.NODE_ENV === "production" && process.env.NEXT_PUBLIC_APP_URL?.startsWith("https") === true;
+  if (
+    process.env.NODE_ENV === "development" ||
+    process.env.NEXT_PUBLIC_APP_URL?.startsWith("http://localhost") === true ||
+    process.env.NEXT_PUBLIC_APP_URL?.startsWith("http://127.0.0.1") === true
+  ) {
+    return false;
+  }
+  return true;
 }
 
 export async function createSession(userId: string): Promise<string> {

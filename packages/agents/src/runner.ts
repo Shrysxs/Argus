@@ -38,7 +38,7 @@ export async function runAgentPersona(
     );
   }
 
-  const model = options.model || persona.modelPreference || "llama-3.3-70b-versatile";
+  const model = options.model || persona.modelPreference || "openai/gpt-oss-20b";
   const fetchImpl = options.fetchFn || fetch;
 
   const systemPrompt = `You are ${persona.name} (${persona.id}), an AI agent in the Argus Investment Syndicate.
