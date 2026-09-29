@@ -35,9 +35,9 @@ describe("@argus/agents Roster & Runner", () => {
       agentId: persona.id,
       vote: "BUY",
       confidence: 85,
-      reasoning: "Strong margin of safety.",
-      dataPointsCited: ["priceUsd: 88000"],
-      promptVersion: "value-hunter/v1",
+      reasoning: "At $88,000, Bitcoin trades at a $1.7T valuation with institutional moat.",
+      dataPointsCited: ["Price: $88,000"],
+      promptVersion: "value-hunter/v2",
       modelUsed: persona.modelPreference,
     };
 
@@ -48,18 +48,19 @@ describe("@argus/agents Roster & Runner", () => {
     assert.ok(vote);
     assert.strictEqual(vote?.agentId, "value-hunter");
     assert.strictEqual(vote?.vote, "BUY");
+    assert.strictEqual(vote?.promptVersion, "value-hunter/v2");
     assert.strictEqual(vote?.confidence, 85);
   });
 
-  test("runSyndicate runs all 5 agents in parallel", async () => {
+  test("runSyndicate runs all 5 agents in parallel with v2 prompts", async () => {
     const votes = await runSyndicate(mockSnapshot, {
       mockFn: async (persona: AgentPersona) => ({
         agentId: persona.id,
         vote: persona.id === "risk-guardian" ? "HOLD" : "BUY",
         confidence: 80,
-        reasoning: `${persona.name} recommendation.`,
+        reasoning: `${persona.name} v2 quantitative analysis citing $88,000.`,
         dataPointsCited: ["Price: $88,000"],
-        promptVersion: `${persona.id}/v1`,
+        promptVersion: `${persona.id}/v2`,
         modelUsed: persona.modelPreference,
       }),
     });
@@ -67,6 +68,7 @@ describe("@argus/agents Roster & Runner", () => {
     assert.strictEqual(votes.length, 5);
     const riskVote = votes.find((v: AgentVote) => v.agentId === "risk-guardian");
     assert.strictEqual(riskVote?.vote, "HOLD");
+    assert.strictEqual(riskVote?.promptVersion, "risk-guardian/v2");
   });
 
   test("runSyndicate handles partial agent failure cleanly", async () => {

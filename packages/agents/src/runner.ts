@@ -1,3 +1,5 @@
+import fs from "node:fs";
+import path from "node:path";
 import type {
   AgentPersona,
   AgentVote,
@@ -6,6 +8,24 @@ import type {
 } from "@argus/shared-types";
 import { AGENT_ROSTER } from "./roster";
 
+function loadPromptContent(frameworkPromptRef: string): string | null {
+  try {
+    const candidatePaths = [
+      path.resolve(process.cwd(), frameworkPromptRef),
+      path.resolve(process.cwd(), "packages/agents", frameworkPromptRef),
+      path.resolve(process.cwd(), "..", frameworkPromptRef),
+      path.resolve(process.cwd(), "../packages/agents", frameworkPromptRef),
+    ];
+    for (const p of candidatePaths) {
+      if (fs.existsSync(p)) {
+        return fs.readFileSync(p, "utf-8");
+      }
+    }
+  } catch {
+    // Fallback if file read unavailable
+  }
+  return null;
+}
 
 export interface RunAgentOptions {
   apiKey?: string;
@@ -41,15 +61,12 @@ export async function runAgentPersona(
   const model = options.model || persona.modelPreference || "openai/gpt-oss-20b";
   const fetchImpl = options.fetchFn || fetch;
 
-  const systemPrompt = `You are ${persona.name} (${persona.id}), an AI agent in the Argus Investment Syndicate.
+  const promptFileContent = loadPromptContent(persona.frameworkPromptRef);
+  const systemPrompt = promptFileContent
+    ? `${promptFileContent}\n\nTask: Analyze MarketDataSnapshot for asset ${snapshot.asset}.\nRespond strictly with valid JSON conforming to the output schema.`
+    : `You are ${persona.name} (${persona.id}), an AI agent in the Argus Investment Syndicate.
 Analyze the provided MarketDataSnapshot for asset ${snapshot.asset}.
-Respond strictly with valid JSON with the following structure:
-{
-  "vote": "BUY" | "SELL" | "HOLD",
-  "confidence": number (0 to 100),
-  "reasoning": "2-3 concise sentences justifying your decision",
-  "dataPointsCited": ["human-readable metric citation 1", "metric citation 2"]
-}`;
+Respond strictly with valid JSON with keys: "vote", "confidence", "reasoning", "dataPointsCited".`;
 
   const userPrompt = `Asset: ${snapshot.asset}
 Market Data Snapshot:
@@ -110,7 +127,9 @@ Sources available: ${snapshot.sources.join(", ")}`;
       ? parsed.dataPointsCited.map((item: unknown) => String(item))
       : [`Asset: ${snapshot.asset}`];
 
-    const promptVersion = `${persona.id}/v1`;
+    const promptVersion = persona.frameworkPromptRef
+      .replace(/^prompts\//, "")
+      .replace(/\.md$/, "");
 
     return {
       agentId: persona.id,
