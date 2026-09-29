@@ -74,20 +74,20 @@ export function AssetSelector({ value, onChange, disabled }: AssetSelectorProps)
         type="button"
         disabled={disabled}
         onClick={() => setIsOpen((prev) => !prev)}
-        className="flex h-9 w-full items-center justify-between rounded-lg border border-white/10 bg-[#0E1015] px-3 py-1.5 text-xs text-white transition-colors hover:border-white/20 focus:outline-none focus:ring-1 focus:ring-[var(--accent-glow)] disabled:cursor-not-allowed disabled:opacity-50"
+        className="flex h-9 w-full items-center justify-between rounded-sm border border-[#1E222A] bg-[#12141A] px-3 py-1.5 text-xs text-[#F3F4F6] transition-colors hover:border-[#B08D57]/50 focus:border-[#B08D57]/60 focus:outline-none disabled:cursor-not-allowed disabled:opacity-50"
       >
         <div className="flex items-center gap-2 truncate">
-          <span className="flex h-5 w-5 items-center justify-center rounded bg-white/10 text-[10px] font-bold text-[var(--accent-glow)]">
+          <span className="flex h-5 w-5 items-center justify-center rounded-sm bg-[#1A1D26] text-[10px] font-mono font-bold text-[#B08D57]">
             {selectedCoin.symbol.slice(0, 3)}
           </span>
-          <span className="font-semibold text-white">{selectedCoin.symbol}</span>
-          <span className="truncate text-neutral-400">({selectedCoin.name})</span>
+          <span className="font-mono font-bold text-[#F3F4F6]">{selectedCoin.symbol}</span>
+          <span className="truncate text-neutral-400 font-sans text-[11px]">({selectedCoin.name})</span>
         </div>
 
         {/* Chevron icon */}
         <svg
-          className={`ml-2 h-4 w-4 text-neutral-400 transition-transform duration-200 ${
-            isOpen ? "rotate-180 text-white" : ""
+          className={`ml-2 h-3.5 w-3.5 text-neutral-400 transition-transform duration-200 ${
+            isOpen ? "rotate-180 text-[#B08D57]" : ""
           }`}
           fill="none"
           viewBox="0 0 24 24"
@@ -99,7 +99,7 @@ export function AssetSelector({ value, onChange, disabled }: AssetSelectorProps)
 
       {/* Popover Dropdown */}
       {isOpen && (
-        <div className="absolute right-0 top-full z-50 mt-1 w-full min-w-[260px] rounded-xl border border-white/10 bg-[#0A0C10] p-2 shadow-2xl backdrop-blur-xl">
+        <div className="absolute right-0 top-full z-50 mt-1 w-full min-w-[260px] rounded-sm border border-[#1E222A] bg-[#0A0B0D] p-2 shadow-2xl">
           {/* Search Box */}
           <div className="relative mb-2">
             <svg
@@ -121,7 +121,7 @@ export function AssetSelector({ value, onChange, disabled }: AssetSelectorProps)
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               placeholder="Type ticker or name (e.g. DOGE, LINK)…"
-              className="w-full rounded-lg border border-white/10 bg-[#12151D] py-1.5 pl-8 pr-3 text-xs text-white placeholder-neutral-500 focus:border-[var(--accent-glow)] focus:outline-none focus:ring-1 focus:ring-[var(--accent-glow)]"
+              className="w-full rounded-sm border border-[#1E222A] bg-[#12141A] py-1.5 pl-8 pr-3 text-xs text-[#F3F4F6] placeholder-neutral-500 focus:border-[#B08D57] focus:outline-none"
               onKeyDown={(e) => {
                 if (e.key === "Escape") setIsOpen(false);
                 if (e.key === "Enter") {
@@ -135,7 +135,7 @@ export function AssetSelector({ value, onChange, disabled }: AssetSelectorProps)
           {/* List of Coins */}
           <div className="max-h-60 overflow-y-auto pr-1">
             {filteredCoins.length === 0 ? (
-              <div className="py-4 text-center text-xs text-neutral-400">
+              <div className="py-4 text-center text-xs font-mono text-neutral-500">
                 No supported assets match &quot;{search}&quot;
               </div>
             ) : (
@@ -146,31 +146,21 @@ export function AssetSelector({ value, onChange, disabled }: AssetSelectorProps)
                     key={coin.id}
                     type="button"
                     onClick={() => handleSelect(coin)}
-                    className={`flex w-full items-center justify-between rounded-lg px-2.5 py-1.5 text-left text-xs transition-colors ${
+                    className={`flex w-full items-center justify-between rounded-sm px-2.5 py-1.5 text-left text-xs transition-colors ${
                       isSelected
-                        ? "bg-white/10 font-semibold text-white"
-                        : "text-neutral-300 hover:bg-white/5 hover:text-white"
+                        ? "bg-[#181A24] font-semibold text-[#F3F4F6] border-l-2 border-[#B08D57]"
+                        : "text-neutral-300 hover:bg-[#14161F] hover:text-[#F3F4F6]"
                     }`}
                   >
                     <div className="flex items-center gap-2 truncate">
-                      <span className="font-mono font-bold text-white">{coin.symbol}</span>
-                      <span className="truncate text-neutral-400 text-[11px]">{coin.name}</span>
+                      <span className="font-mono font-bold text-[#F3F4F6]">{coin.symbol}</span>
+                      <span className="truncate text-neutral-400 text-[11px] font-sans">{coin.name}</span>
                     </div>
 
                     {isSelected && (
-                      <svg
-                        className="h-3.5 w-3.5 text-[var(--accent-glow)]"
-                        fill="none"
-                        viewBox="0 0 24 24"
-                        stroke="currentColor"
-                      >
-                        <path
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          strokeWidth={2.5}
-                          d="M5 13l4 4L19 7"
-                        />
-                      </svg>
+                      <span className="text-[10px] font-mono text-[#B08D57] font-semibold uppercase">
+                        Selected
+                      </span>
                     )}
                   </button>
                 );

@@ -11,7 +11,26 @@
 - Framer Motion for the syndicate deliberation sequence (agents "thinking" in real time was a strong part of the hackathon demo — keep it, it's the moment that sells the product).
 - `viem` (or whatever `ONCHAIN.md` §1 settles on) only inside the wallet-connect flow — nowhere else in this app.
 
-**Open decision, not yet made:** visual identity. The hackathon version was dark-mode-only with purple accents; your portfolio site runs mono black-and-white. Argus probably wants its own identity rather than inheriting either by default — flagging this as a decision to make deliberately, not inheriting silently.
+**Visual Identity:** Cold Institutional Power — An old-money private bank / family office aesthetic (understated, corporate, weighty, deliberate).
+
+- **Palette:**
+  - Base background: `#0A0B0D` (Cold charcoal-graphite near-black).
+  - Secondary dark tone: `#12141A` (Muted deep navy-gray for section partitions).
+  - Border rules: `#1E222A` (Thin 1px sharp division rules like glass/steel partitions).
+  - Single Accent: `#B08D57` (Restrained champagne brass / muted metallic). **Strict Rule:** Used ONLY for a thin rule line, small label, subtle active nav underline, or specific consensus numerals. **NEVER** as a filled button background, never glowing, max 1 accent element per screen section.
+  - Primary / Secondary Text: `#F3F4F6` (Cold off-white) / `#9CA3AF` (Muted slate gray).
+  - Semantic Trading Colors: BUY (`#16A34A`), SELL (`#DC2626`), HOLD (`#D97706`) — intentionally the ONLY saturated colors in the UI. All hover states, focus rings, loading indicators stay within the cold charcoal/brass/white palette (zero default blue rings or spinners).
+
+- **Typography Pairing:**
+  - **Headlines / Hero / Consensus Output:** `Newsreader` (Serif, old-money institutional gravitas).
+  - **Body / UI:** `Inter` (Cold, precise sans with tight `-0.02em` letter-spacing).
+  - **Data Citations & Hashes:** `JetBrains Mono` (Audit-trail monospaced dossier read).
+
+- **Layout & Structure:**
+  - Sharp 1px partition rules (`border-[#1E222A]`), no soft card shadows or glassmorphism blurs.
+  - Minimal radii (`rounded-none` or `rounded-sm` max 2px, no rounded pills).
+  - Formal density & deliberate negative space (private client portal / legal document feel).
+  - Buttons: Solid off-white (`#F3F4F6` with black text) or outlined sharp charcoal. No brass button fills.
 
 ---
 

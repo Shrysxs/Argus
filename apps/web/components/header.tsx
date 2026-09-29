@@ -64,40 +64,40 @@ export function Header() {
     : "";
 
   return (
-    <header className="border-b border-white/[0.08] bg-[#000000] px-4 py-3.5 sm:px-6 md:px-8">
+    <header className="border-b border-[#1E222A] bg-[#0A0B0D] px-4 py-3 sm:px-6 md:px-8">
       <div className="flex items-center justify-between">
-        <div className="flex items-center gap-6">
+        <div className="flex items-center gap-8">
           <Link
             href="/"
-            className="flex items-center gap-2 text-base font-bold tracking-tight text-white transition-opacity hover:opacity-80"
+            className="flex items-center gap-2 text-base font-serif font-bold tracking-tight text-[#F3F4F6] transition-opacity hover:opacity-90"
           >
-            <span className="flex h-6 w-6 items-center justify-center rounded bg-[#FA233B] text-white text-xs font-black">
+            <span className="flex h-6 w-6 items-center justify-center rounded-sm bg-[#12141A] border border-[#B08D57]/40 text-[#B08D57] text-xs font-mono font-bold">
               A
             </span>
-            <span>Argus</span>
+            <span className="font-serif tracking-wider uppercase text-sm font-semibold">ARGUS</span>
           </Link>
 
           {user && (
-            <nav className="flex items-center gap-4">
+            <nav className="flex items-center gap-5">
               <Link
                 href="/syndicate"
-                className={`text-xs font-medium transition-colors ${
+                className={`text-xs font-medium tracking-tight transition-colors py-1 ${
                   pathname === "/syndicate"
-                    ? "text-white font-semibold"
-                    : "text-neutral-400 hover:text-white"
+                    ? "text-[#F3F4F6] font-semibold border-b-2 border-[#B08D57]"
+                    : "text-neutral-400 hover:text-[#F3F4F6]"
                 }`}
               >
-                Syndicate
+                Syndicate Workbench
               </Link>
               <Link
                 href="/history"
-                className={`text-xs font-medium transition-colors ${
+                className={`text-xs font-medium tracking-tight transition-colors py-1 ${
                   pathname === "/history"
-                    ? "text-white font-semibold"
-                    : "text-neutral-400 hover:text-white"
+                    ? "text-[#F3F4F6] font-semibold border-b-2 border-[#B08D57]"
+                    : "text-neutral-400 hover:text-[#F3F4F6]"
                 }`}
               >
-                History
+                Decision History
               </Link>
             </nav>
           )}
@@ -110,14 +110,14 @@ export function Header() {
               <button
                 type="button"
                 onClick={switchNetwork}
-                className="inline-flex items-center gap-1.5 rounded-lg border border-amber-500/40 bg-amber-500/10 px-3 py-1.5 text-xs font-medium text-amber-400 transition-colors hover:bg-amber-500/20"
+                className="inline-flex items-center gap-1.5 rounded-sm border border-amber-500/40 bg-amber-500/10 px-3 py-1 text-xs font-mono text-amber-400 transition-colors hover:bg-amber-500/20"
                 title="Click to switch to Monad Testnet (Chain ID 10143)"
               >
                 <span className="h-1.5 w-1.5 rounded-full bg-amber-400" />
                 Switch to Monad
               </button>
             ) : address ? (
-              <div className="flex items-center gap-1.5 rounded-lg border border-emerald-500/30 bg-emerald-500/10 px-3 py-1 text-xs text-emerald-400">
+              <div className="flex items-center gap-1.5 rounded-sm border border-emerald-500/30 bg-emerald-500/10 px-3 py-1 text-xs text-emerald-400">
                 <span className="h-1.5 w-1.5 rounded-full bg-emerald-400" />
                 <span className="font-mono font-medium">{truncatedAddress}</span>
                 <button
@@ -134,12 +134,12 @@ export function Header() {
                 type="button"
                 disabled={isConnecting}
                 onClick={connect}
-                className="inline-flex h-8 items-center gap-1.5 rounded-lg border border-white/10 bg-[#12141A] px-3 text-xs font-medium text-white transition-all hover:bg-[#1A1D26] hover:border-white/20 disabled:opacity-50"
+                className="inline-flex h-8 items-center gap-1.5 rounded-sm border border-[#1E222A] bg-[#12141A] px-3 text-xs font-mono text-[#F3F4F6] transition-all hover:bg-[#181A24] hover:border-[#B08D57]/40 disabled:opacity-50"
               >
                 {isConnecting ? (
                   <>
                     <svg
-                      className="h-3 w-3 animate-spin text-white"
+                      className="h-3 w-3 animate-spin text-[#B08D57]"
                       viewBox="0 0 24 24"
                       fill="none"
                     >
@@ -167,7 +167,7 @@ export function Header() {
 
             {walletError && (
               <span
-                className="max-w-[150px] truncate text-[10px] text-red-400"
+                className="max-w-[150px] truncate text-[10px] text-red-400 font-mono"
                 title={walletError}
               >
                 {walletError}
@@ -177,18 +177,18 @@ export function Header() {
 
           {/* User auth controls */}
           {loading ? (
-            <div className="h-8 w-16 animate-pulse rounded bg-[#12141A]" />
+            <div className="h-8 w-16 animate-pulse rounded-sm bg-[#12141A]" />
           ) : user ? (
             <div className="flex items-center gap-3">
-              <div className="inline-flex items-center gap-1.5 rounded-md border border-emerald-500/20 bg-emerald-500/10 px-2.5 py-1 text-xs font-medium text-emerald-400">
-                <span className="text-[10px]">💳</span>
-                <span className="font-mono">${(user.creditsUsd ?? 0).toFixed(2)}</span>
+              <div className="inline-flex items-center gap-1.5 rounded-sm border border-[#1E222A] bg-[#12141A] px-2.5 py-1 text-xs font-mono text-[#F3F4F6]">
+                <span className="text-[#B08D57] text-[10px]">USD</span>
+                <span className="font-mono font-semibold">${(user.creditsUsd ?? 0).toFixed(2)}</span>
               </div>
-              <span className="hidden sm:inline text-xs text-neutral-400">{user.email}</span>
+              <span className="hidden sm:inline text-xs font-mono text-neutral-400">{user.email}</span>
               <button
                 type="button"
                 onClick={handleLogout}
-                className="rounded-lg border border-white/10 bg-[#12141A] px-3 py-1.5 text-xs font-medium text-white transition-colors hover:bg-[#1A1D26]"
+                className="rounded-sm border border-[#1E222A] bg-[#12141A] px-3 py-1 text-xs font-medium text-neutral-300 transition-colors hover:bg-[#181A24] hover:text-[#F3F4F6]"
               >
                 Log Out
               </button>
@@ -197,13 +197,13 @@ export function Header() {
             <div className="flex items-center gap-2">
               <Link
                 href="/login"
-                className="rounded-lg border border-white/10 bg-[#12141A] px-3.5 py-1.5 text-xs font-medium text-white transition-colors hover:bg-[#1A1D26]"
+                className="rounded-sm border border-[#1E222A] bg-[#12141A] px-3.5 py-1 text-xs font-medium text-[#F3F4F6] transition-colors hover:bg-[#181A24]"
               >
                 Log in
               </Link>
               <Link
                 href="/signup"
-                className="rounded-lg bg-white px-3.5 py-1.5 text-xs font-semibold text-black transition-colors hover:bg-neutral-200"
+                className="rounded-sm bg-[#F3F4F6] px-3.5 py-1 text-xs font-semibold text-[#0A0B0D] transition-colors hover:bg-neutral-200"
               >
                 Sign up
               </Link>
@@ -211,10 +211,10 @@ export function Header() {
           )}
         </nav>
       </div>
-      
+
       {/* Persistent Sitewide Disclaimer Line */}
-      <div className="mt-2 text-center text-[10px] text-neutral-500 font-sans tracking-wide">
-        Research & educational tool only — not financial advice.
+      <div className="mt-2 text-center text-[10px] font-mono tracking-wider text-neutral-500 uppercase">
+        Institutional Decision-Support Tool — Research & Educational Material Only
       </div>
     </header>
   );

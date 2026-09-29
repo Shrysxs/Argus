@@ -86,17 +86,17 @@ export default function SyndicatePage() {
   }
 
   return (
-    <div className="flex min-h-screen flex-col bg-[#000000] text-white">
+    <div className="flex min-h-screen flex-col bg-[#0A0B0D] text-[#F3F4F6]">
       <Header />
 
       <main className="flex flex-1 flex-col px-4 pb-12 pt-6 sm:px-6 md:px-8">
         {/* Controls */}
         <div className="mx-auto w-full max-w-7xl">
-          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 border-b border-white/10 pb-4">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 border-b border-[#1E222A] pb-4">
             <div>
-              <h1 className="text-2xl font-extrabold tracking-tight text-white">Syndicate Workbench</h1>
-              <p className="mt-1 text-xs text-neutral-400">
-                5-agent multi-model quantitative committee deliberation
+              <h1 className="text-2xl font-serif font-bold tracking-tight text-[#F3F4F6]">Syndicate Workbench</h1>
+              <p className="mt-1 text-xs font-mono text-neutral-400">
+                5-agent quantitative committee deliberation &amp; consensus audit
               </p>
             </div>
 
@@ -113,11 +113,11 @@ export default function SyndicatePage() {
                 type="button"
                 disabled={isLoading}
                 onClick={handleAnalyze}
-                className="inline-flex h-9 items-center gap-2 rounded-lg bg-white px-5 text-xs font-bold text-black transition-colors hover:bg-neutral-200 disabled:cursor-not-allowed disabled:opacity-50"
+                className="inline-flex h-9 items-center gap-2 rounded-sm bg-[#F3F4F6] px-5 text-xs font-bold text-[#0A0B0D] transition-colors hover:bg-neutral-200 disabled:cursor-not-allowed disabled:opacity-50"
               >
                 {isLoading && (
                   <svg
-                    className="h-3.5 w-3.5 animate-spin text-black"
+                    className="h-3.5 w-3.5 animate-spin text-[#0A0B0D]"
                     viewBox="0 0 24 24"
                     fill="none"
                   >
@@ -136,7 +136,7 @@ export default function SyndicatePage() {
                     />
                   </svg>
                 )}
-                {isLoading ? "Analyzing…" : "Analyze"}
+                {isLoading ? "Running Deliberation…" : "Run Analysis"}
               </button>
             </div>
           </div>
