@@ -7,7 +7,7 @@ import { analyzeAsset } from "@/lib/api";
 import { AnalyzePanel } from "./analyze-panel";
 import { Header } from "@/components/header";
 
-const ASSETS = ["BTC", "ETH", "SOL"] as const;
+import { AssetSelector } from "@/components/asset-selector";
 
 type PanelState =
   | { status: "idle" }
@@ -17,7 +17,7 @@ type PanelState =
 
 export default function SyndicatePage() {
   const router = useRouter();
-  const [selectedAsset, setSelectedAsset] = useState<string>(ASSETS[0]);
+  const [selectedAsset, setSelectedAsset] = useState<string>("BTC");
   const [panelState, setPanelState] = useState<PanelState>({ status: "idle" });
   const [authChecking, setAuthChecking] = useState(true);
   const isLoading = panelState.status === "loading";
@@ -101,24 +101,12 @@ export default function SyndicatePage() {
             </div>
 
             <div className="flex flex-wrap items-center gap-3">
-              {/* Asset selector */}
-              <div className="flex gap-1 rounded-lg border border-white/10 bg-[#0E1015] p-1">
-                {ASSETS.map((asset) => (
-                  <button
-                    key={asset}
-                    type="button"
-                    disabled={isLoading}
-                    onClick={() => setSelectedAsset(asset)}
-                    className={`rounded-md px-3.5 py-1.5 text-xs font-semibold transition-colors ${
-                      selectedAsset === asset
-                        ? "bg-white text-black"
-                        : "text-neutral-400 hover:text-white"
-                    } disabled:cursor-not-allowed disabled:opacity-50`}
-                  >
-                    {asset}
-                  </button>
-                ))}
-              </div>
+              {/* Searchable Asset Selector */}
+              <AssetSelector
+                value={selectedAsset}
+                onChange={setSelectedAsset}
+                disabled={isLoading}
+              />
 
               {/* Analyze button */}
               <button

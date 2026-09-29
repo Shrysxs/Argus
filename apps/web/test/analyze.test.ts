@@ -111,3 +111,65 @@ describe("POST /api/analyze Orchestration & Auth Flow", () => {
     assert.strictEqual(isDegraded, true);
   });
 });
+
+describe("End-to-End Multi-Asset Universe Analysis", () => {
+  test("Resolves and builds market snapshot for expanded assets (DOGE, LINK, AVAX)", async () => {
+    const { fetchSnapshot } = await import("@argus/data-layer");
+
+    // Mock fetch for price and sentiment
+    const mockMultiFetch: typeof fetch = async (url) => {
+      const urlStr = url.toString();
+      if (urlStr.includes("coingecko")) {
+        return new Response(
+          JSON.stringify({
+            dogecoin: { usd: 0.14, usd_market_cap: 20000000000, usd_24h_vol: 1000000000, usd_24h_change: 5.2 },
+            chainlink: { usd: 18.5, usd_market_cap: 11000000000, usd_24h_vol: 500000000, usd_24h_change: -1.2 },
+            "avalanche-2": { usd: 35.0, usd_market_cap: 14000000000, usd_24h_vol: 600000000, usd_24h_change: 3.4 },
+          }),
+          { status: 200 }
+        );
+      }
+      return new Response(
+        JSON.stringify({ data: [{ value: "65", value_classification: "Greed" }] }),
+        { status: 200 }
+      );
+    };
+
+    for (const ticker of ["DOGE", "LINK", "AVAX"]) {
+      const snapshot = await fetchSnapshot(ticker, mockMultiFetch);
+      assert.strictEqual(snapshot.asset, ticker);
+      assert.ok(snapshot.hash.length === 64);
+
+      // Run syndicate deliberation
+      const votes = await runSyndicate(snapshot, {
+        mockFn: async (persona) => ({
+          agentId: persona.id,
+          vote: "BUY",
+          confidence: 85,
+          reasoning: `${persona.name} analysis for ${ticker}.`,
+          dataPointsCited: [`Asset: ${ticker}`],
+          promptVersion: `${persona.id}/v1`,
+          modelUsed: persona.modelPreference,
+        }),
+      });
+
+      assert.strictEqual(votes.length, 5);
+      const consensus = computeConsensus(votes);
+      assert.strictEqual(consensus.recommendation, "BUY");
+      assert.strictEqual(consensus.agentVotes.length, 5);
+    }
+  });
+
+  test("Rejects unsupported/invalid tickers with explicit DataFetchError", async () => {
+    const { fetchSnapshot, DataFetchError } = await import("@argus/data-layer");
+    await assert.rejects(
+      () => fetchSnapshot("NON_EXISTENT_COIN_XYZ_999"),
+      (err: unknown) => {
+        assert.ok(err instanceof DataFetchError);
+        assert.strictEqual(err.source, "coingecko");
+        assert.match(err.message, /unsupported asset ticker/);
+        return true;
+      }
+    );
+  });
+});

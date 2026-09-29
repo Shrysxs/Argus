@@ -1,5 +1,5 @@
 import { DataFetchError } from "../errors";
-
+import { getCoinUniverse, resolveCoinId } from "./coins";
 
 export interface PriceData {
   asset: string;
@@ -14,21 +14,12 @@ export interface PriceData {
 // coin id (e.g. "bitcoin", "ethereum"), not the ticker symbol.
 const COINGECKO_URL = "https://api.coingecko.com/api/v3/simple/price";
 
-const SYMBOL_MAP: Record<string, string> = {
-  btc: "bitcoin",
-  bitcoin: "bitcoin",
-  eth: "ethereum",
-  ethereum: "ethereum",
-  sol: "solana",
-  solana: "solana",
-};
-
 export async function fetchPrice(
   coinId: string,
   fetchFn: typeof fetch = fetch
 ): Promise<PriceData> {
-  const normalizedId = coinId.trim().toLowerCase();
-  const cgId = SYMBOL_MAP[normalizedId] ?? normalizedId;
+  const universe = await getCoinUniverse(fetchFn);
+  const cgId = resolveCoinId(coinId, universe);
 
   const params = new URLSearchParams({
     ids: cgId,

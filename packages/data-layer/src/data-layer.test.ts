@@ -6,6 +6,7 @@ import { fetchPriceFallback } from "./fetchers/price-fallback";
 import { fetchSentiment } from "./fetchers/sentiment";
 import { fetchSentimentFallback } from "./fetchers/sentiment-fallback";
 import { fetchOnchainMetrics } from "./fetchers/onchain-metrics";
+import { resolveCoinId, getCoinUniverse, clearUniverseCache, STATIC_COINS_LIST } from "./fetchers/coins";
 import { fetchSnapshot, snapshotCache } from "./snapshot";
 import { sha256 } from "./hash";
 import { TtlCache } from "./cache";
@@ -141,13 +142,60 @@ describe("fetchPrice", () => {
 
   it("throws DataFetchError when coin id is not in response", async () => {
     await assert.rejects(
-      () => fetchPrice("notarealcoin", mockFetch({})),
+      () => fetchPrice("bitcoin", mockFetch({})),
       (err: unknown) => {
         assert.ok(err instanceof DataFetchError);
         assert.match(err.message, /no data returned/);
         return true;
       },
     );
+  });
+});
+
+// ---------------------------------------------------------------------------
+// resolveCoinId & getCoinUniverse
+// ---------------------------------------------------------------------------
+
+describe("resolveCoinId & getCoinUniverse", () => {
+  it("resolves classic assets (BTC, ETH, SOL)", () => {
+    assert.equal(resolveCoinId("BTC"), "bitcoin");
+    assert.equal(resolveCoinId("ETH"), "ethereum");
+    assert.equal(resolveCoinId("SOL"), "solana");
+  });
+
+  it("resolves expanded crypto asset universe (DOGE, LINK, AVAX, SUI, ADA)", () => {
+    assert.equal(resolveCoinId("DOGE"), "dogecoin");
+    assert.equal(resolveCoinId("LINK"), "chainlink");
+    assert.equal(resolveCoinId("AVAX"), "avalanche-2");
+    assert.equal(resolveCoinId("SUI"), "sui");
+    assert.equal(resolveCoinId("ADA"), "cardano");
+  });
+
+  it("resolves direct CoinGecko coin IDs", () => {
+    assert.equal(resolveCoinId("dogecoin"), "dogecoin");
+    assert.equal(resolveCoinId("chainlink"), "chainlink");
+    assert.equal(resolveCoinId("avalanche-2"), "avalanche-2");
+  });
+
+  it("fails gracefully with DataFetchError for unsupported/invalid tickers (no silent slug guessing)", () => {
+    assert.throws(
+      () => resolveCoinId("INVALID_TICKER_999"),
+      (err: unknown) => {
+        assert.ok(err instanceof DataFetchError);
+        assert.equal(err.source, "coingecko");
+        assert.match(err.message, /unsupported asset ticker/);
+        return true;
+      }
+    );
+  });
+
+  it("getCoinUniverse falls back to static top assets on network error", async () => {
+    clearUniverseCache();
+    const universe = await getCoinUniverse(failingFetch());
+    assert.ok(universe.length >= 100);
+    const doge = universe.find((c) => c.symbol === "DOGE");
+    assert.ok(doge);
+    assert.equal(doge.id, "dogecoin");
   });
 });
 

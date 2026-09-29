@@ -6,18 +6,35 @@ interface TradingViewChartProps {
   asset: string;
 }
 
-const SYMBOL_MAP: Record<string, string> = {
-  BTC: "BINANCE:BTCUSDT",
-  ETH: "BINANCE:ETHUSDT",
-  SOL: "BINANCE:SOLUSDT",
-};
+function getTradingViewSymbol(asset: string): string {
+  const clean = asset.trim().toUpperCase();
+  if (!clean) return "BINANCE:BTCUSDT";
+
+  // Specific overrides where ticker differs on Binance
+  const SYMBOL_OVERRIDES: Record<string, string> = {
+    USDT: "BINANCE:USDCUSDT",
+    USDC: "BINANCE:USDCUSDT",
+    POL: "BINANCE:POLUSDT",
+    MATIC: "BINANCE:MATICUSDT",
+    TON: "BINANCE:TONUSDT",
+    FET: "BINANCE:FETUSDT",
+    RENDER: "BINANCE:RENDERUSDT",
+  };
+
+  if (SYMBOL_OVERRIDES[clean]) {
+    return SYMBOL_OVERRIDES[clean];
+  }
+
+  // Dynamic BINANCE:{TICKER}USDT pattern
+  return `BINANCE:${clean}USDT`;
+}
 
 export function TradingViewChart({ asset }: TradingViewChartProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const [scriptLoaded, setScriptLoaded] = useState(false);
 
-  const symbol = SYMBOL_MAP[asset.toUpperCase()] || "BINANCE:BTCUSDT";
-  const containerId = `tradingview_${asset.toLowerCase()}_chart`;
+  const symbol = getTradingViewSymbol(asset);
+  const containerId = `tradingview_${asset.toLowerCase().replace(/[^a-z0-9]/g, "")}_chart`;
 
   useEffect(() => {
     // Check if script already exists

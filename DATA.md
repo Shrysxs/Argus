@@ -7,7 +7,9 @@
 
 ## 1. Sources
 
-- Price data (CoinGecko-class provider)
+- Price data (CoinGecko-class provider) — supports top 100+ crypto assets by market cap via dynamic ticker resolution (`resolveCoinId`), resolving symbols like `DOGE`, `LINK`, `AVAX` to CoinGecko coin IDs (e.g. `dogecoin`, `chainlink`, `avalanche-2`).
+- Coin list discovery — periodically fetches CoinGecko's `/coins/list` endpoint with aggressive 24-hour caching (`getCoinUniverse`) and a curated 100-asset static baseline fallback so rate limits are never hit per price request.
+- Unsupported tickers — any ticker or coin ID not found in the verified asset universe throws a clear `DataFetchError` (fails loud, no silent slug guessing).
 - Sentiment index (Fear & Greed-class provider)
 - On-chain metrics (MVRV, SOPR, netflows, whale scores) for `onchain-sleuth` — needs a dedicated provider, not yet selected; log the decision in `docs/chain-decision.md`-style scratchpad once picked.
 
