@@ -99,27 +99,27 @@ export default function HistoryPage() {
               Syndicate Deliberation History
             </h1>
             <p className="mt-1 text-xs text-neutral-400 font-mono">
-              Verifiable log of AI syndicate analysis runs and on-chain sealing status.
+              Verifiable log of syndicate analysis runs and on-chain sealing status.
             </p>
           </div>
           <Link
             href="/syndicate"
             className="inline-flex h-8 items-center justify-center rounded-sm bg-[#F3F4F6] px-4 text-xs font-bold text-[#0A0B0D] transition-colors hover:bg-neutral-200 self-start md:self-auto"
           >
-            + New Analysis
+            New analysis
           </Link>
         </div>
 
         {/* Prominent Research & Educational Tool Disclaimer */}
         <div className="mb-6 rounded-sm border border-[#1E222A] bg-[#12141A] p-3 text-center text-xs text-neutral-400 font-mono">
-          <span className="font-semibold text-white">Research & Educational Dossier</span> — for historical auditing purposes only. Not investment advice.
+          <span className="font-semibold text-white">Research & Educational Dossier.</span> For historical auditing purposes only. Not investment advice.
         </div>
 
         {/* Content Section */}
         {unauthorized ? (
           <div className="my-16 text-center space-y-4 rounded-sm border border-[#1E222A] bg-[#12141A] p-12">
-            <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-sm bg-[#0A0B0D] text-white font-mono border border-[#1E222A]">
-              🔒
+            <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-sm bg-[#0A0B0D] text-white font-mono border border-[#1E222A] text-xs font-bold text-[#B08D57]">
+              AUTH
             </div>
             <h2 className="text-xl font-serif font-normal text-white">Authentication Required</h2>
             <p className="text-xs text-neutral-400 max-w-md mx-auto font-mono">
@@ -247,7 +247,7 @@ export default function HistoryPage() {
                           rel="noreferrer"
                           className="text-white underline hover:text-neutral-300 truncate block"
                         >
-                          {item.txHash.slice(0, 10)}...{item.txHash.slice(-8)} ↗
+                          {item.txHash.slice(0, 10)}...{item.txHash.slice(-8)}
                         </a>
                       ) : (
                         <span className="text-neutral-500 italic">
@@ -259,7 +259,7 @@ export default function HistoryPage() {
 
                   {item.disagreement && (
                     <div className="rounded-sm border border-amber-500/30 bg-amber-500/10 px-3 py-1.5 text-[11px] text-amber-400 font-mono">
-                      ⚠️ Split Decision: Committee votes were heavily fragmented.
+                      Split Decision: Committee votes were heavily fragmented.
                     </div>
                   )}
                 </div>

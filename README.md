@@ -1,6 +1,6 @@
-# Argus — Decentralized AI Investment Syndicate
+# Argus: Decentralized Investment Syndicate
 
-Argus is an on-chain AI investment committee platform. Instead of relying on a single LLM or closed trading bot, Argus orchestrates a syndicate of 5 specialized AI agents (Value, Momentum, Macro, On-Chain, Risk) that analyze assets independently, vote with confidence scores, reach consensus, and seal decision records on-chain.
+Argus is an on-chain quantitative investment committee platform. Instead of relying on a single LLM or closed trading bot, Argus orchestrates a syndicate of five specialized models (Value, Momentum, Macro, On-Chain, Risk) that analyze assets independently, vote with confidence scores, reach consensus, and seal decision records on-chain.
 
 Decisions, market data snapshots, and prompt version hashes are anchored to the Monad network (`DecisionRecorded` events) for verifiable auditability over time.
 

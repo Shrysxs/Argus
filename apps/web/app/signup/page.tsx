@@ -184,16 +184,16 @@ export default function SignupPage() {
                   {/* Requirement Checklist */}
                   <div className="grid grid-cols-2 gap-x-2 gap-y-1 text-[11px] pt-1 text-neutral-400 font-mono">
                     <span className={strength.hasMinLength ? "text-emerald-400 flex items-center gap-1" : "text-neutral-500 flex items-center gap-1"}>
-                      {strength.hasMinLength ? "✓" : "○"} Min 8 characters
+                      {strength.hasMinLength ? "+" : "○"} Min 8 characters
                     </span>
                     <span className={strength.hasLetter ? "text-emerald-400 flex items-center gap-1" : "text-neutral-500 flex items-center gap-1"}>
-                      {strength.hasLetter ? "✓" : "○"} Includes letter
+                      {strength.hasLetter ? "+" : "○"} Includes letter
                     </span>
                     <span className={strength.hasNumber ? "text-emerald-400 flex items-center gap-1" : "text-neutral-500 flex items-center gap-1"}>
-                      {strength.hasNumber ? "✓" : "○"} Includes number
+                      {strength.hasNumber ? "+" : "○"} Includes number
                     </span>
                     <span className={strength.hasSpecial ? "text-emerald-400 flex items-center gap-1" : "text-neutral-500 flex items-center gap-1"}>
-                      {strength.hasSpecial ? "✓" : "○"} Special character
+                      {strength.hasSpecial ? "+" : "○"} Special character
                     </span>
                   </div>
                 </div>

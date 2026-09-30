@@ -1,5 +1,5 @@
 // Display metadata for the v1 agent roster (SYNDICATE.md §1).
-// This is product feature copy — names and frameworks — not analysis data.
+// Static product copy for names and frameworks, not analysis data.
 
 export interface AgentDisplayInfo {
   id: string;

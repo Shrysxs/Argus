@@ -96,7 +96,7 @@ export default function SyndicatePage() {
             <div>
               <h1 className="text-2xl font-serif font-bold tracking-tight text-[#F3F4F6]">Syndicate Workbench</h1>
               <p className="mt-1 text-xs font-mono text-neutral-400">
-                5-agent quantitative committee deliberation &amp; consensus audit
+                Five-model quantitative committee deliberation and consensus audit
               </p>
             </div>
 

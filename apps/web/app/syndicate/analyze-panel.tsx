@@ -5,6 +5,7 @@ import type { ConsensusResult, AgentVote, VoteDirection, DecisionPayload } from 
 import { AGENT_ROSTER } from "@/lib/agents";
 import { recordDecisionApi } from "@/lib/api";
 import { useWallet } from "@/hooks/use-wallet";
+import { TradingViewChart } from "@/components/trading-view-chart";
 
 type PanelState =
   | { status: "idle" }
@@ -24,11 +25,11 @@ function voteBadgeColor(vote: VoteDirection): string {
 }
 
 const PERSONA_ICONS: Record<string, string> = {
-  "value-hunter": "⚖️",
-  "momentum-trader": "📈",
-  "macro-analyst": "🌐",
-  "onchain-sleuth": "⛓️",
-  "risk-guardian": "🛡️",
+  "value-hunter": "VAL",
+  "momentum-trader": "MOM",
+  "macro-analyst": "MAC",
+  "onchain-sleuth": "ONC",
+  "risk-guardian": "RSK",
 };
 
 function AgentCard({
@@ -43,7 +44,7 @@ function AgentCard({
   const agent = AGENT_ROSTER.find((a) => a.id === agentId);
   if (!agent) return null;
 
-  const icon = PERSONA_ICONS[agentId] || "🤖";
+  const icon = PERSONA_ICONS[agentId] || "MDL";
 
   return (
     <div className={`relative rounded-sm border p-4 transition-colors ${
@@ -55,7 +56,7 @@ function AgentCard({
     }`}>
       <div className="flex items-start justify-between gap-2">
         <div className="flex items-center gap-2">
-          <span className="flex h-7 w-7 items-center justify-center rounded-sm bg-[#181A24] text-xs border border-[#1E222A]">
+          <span className="flex h-7 w-7 items-center justify-center rounded-sm bg-[#181A24] text-[10px] font-mono font-bold border border-[#1E222A] text-[#B08D57]">
             {icon}
           </span>
           <div>
@@ -139,7 +140,7 @@ function AgentCard({
         </div>
       )}
 
-      {/* Dormant — no data, not loading */}
+      {/* Dormant: no data, not loading */}
       {!isLoading && !vote && (
         <div className="mt-4 pt-2">
           <p className="text-[11px] font-mono text-neutral-500 italic">
@@ -150,8 +151,6 @@ function AgentCard({
     </div>
   );
 }
-
-import { TradingViewChart } from "@/components/trading-view-chart";
 
 export function AnalyzePanel({
   state,
@@ -244,7 +243,7 @@ export function AnalyzePanel({
       {state.status === "success" && state.result.degraded && (
         <div className="rounded-lg border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-amber-400">
           <p className="text-xs font-medium">
-            ⚠️ Degraded Syndicate Round: Only {state.result.responsiveCount ?? votes.length} of 5 agents responded.
+            Degraded Syndicate Round: Only {state.result.responsiveCount ?? votes.length} of 5 models responded.
             Consensus threshold (3/5) was partially degraded.
           </p>
         </div>
@@ -270,7 +269,7 @@ export function AnalyzePanel({
                 </h2>
               </div>
               <span className="rounded-sm bg-[#181A24] px-2.5 py-1 text-[10px] font-mono text-neutral-300 border border-[#1E222A]">
-                5 Personas
+                5 Models
               </span>
             </div>
 
@@ -283,7 +282,7 @@ export function AnalyzePanel({
                   Awaiting Deliberation Trigger
                 </p>
                 <p className="text-xs text-neutral-400 max-w-xs mx-auto font-sans">
-                  Click &quot;Run Analysis&quot; above to execute 5 specialized AI agent personas across quantitative frameworks for {asset}.
+                  Click &quot;Run Analysis&quot; above to execute 5 specialized model frameworks for {asset}.
                 </p>
               </div>
             )}
@@ -356,7 +355,7 @@ export function AnalyzePanel({
 
                 {/* Prominent Research Disclaimer directly next to signal output */}
                 <div className="rounded-sm border border-[#1E222A] bg-[#181A24] p-2.5 text-center text-xs font-sans text-neutral-300">
-                  <span className="font-semibold text-[#F3F4F6]">Research &amp; educational tool only</span> — not financial advice.
+                  <span className="font-semibold text-[#F3F4F6]">Research &amp; educational tool only.</span> Not financial advice.
                 </div>
 
                 {/* Vote breakdown bar */}
@@ -382,7 +381,7 @@ export function AnalyzePanel({
 
                 {state.result.disagreement && (
                   <div className="rounded-sm border border-amber-500/30 bg-amber-500/10 px-3 py-1.5 text-xs font-mono text-amber-400">
-                    ⚠️ High Disagreement: Committee votes are split near threshold.
+                    High Disagreement: Committee votes are split near threshold.
                   </div>
                 )}
               </div>
@@ -396,7 +395,7 @@ export function AnalyzePanel({
                 <div className="space-y-3">
                   <div className="space-y-1.5">
                     <span className="text-xs font-medium text-neutral-400 font-mono">
-                      Select Sealing Signer Path:
+                      Select signer path:
                     </span>
                     <div className="flex flex-wrap gap-2 text-xs font-mono">
                       {/* Option 1: Connected Client Wallet */}
@@ -490,7 +489,7 @@ export function AnalyzePanel({
 
               {sealTxHash && (
                 <div className="flex items-center gap-2 rounded-sm border border-emerald-500/30 bg-emerald-500/10 px-4 py-2 text-xs text-emerald-400 font-mono">
-                  <span className="font-semibold">✓ Sealed On-Chain ({sealMode === "client" ? "Client Signed" : "Backend Signed"}):</span>
+                  <span className="font-semibold">Sealed On-Chain ({sealMode === "client" ? "Client Signed" : "Backend Signed"}):</span>
                   <a
                     href={`https://testnet.monadexplorer.com/tx/${sealTxHash}`}
                     target="_blank"
@@ -512,15 +511,15 @@ export function AnalyzePanel({
         </div>
       </div>
 
-      {/* Committee Chamber — 5 Agent Deliberation Cards */}
+      {/* Committee Chamber: 5 agent deliberation cards */}
       <div className="pt-6">
         <div className="flex items-center justify-between mb-4 border-b border-[#1E222A] pb-3">
           <div>
             <h2 className="text-xs font-mono uppercase tracking-widest text-[#B08D57]">
-              The AI Investment Committee
+              Investment Committee Roster
             </h2>
             <p className="text-sm font-serif font-semibold text-[#F3F4F6]">
-              Specialized Agent Personas &amp; Deliberation Dossiers
+              Specialized Model Frameworks &amp; Deliberation Dossiers
             </p>
           </div>
           <span className="text-xs font-mono text-neutral-400">
@@ -542,5 +541,3 @@ export function AnalyzePanel({
     </div>
   );
 }
-
-

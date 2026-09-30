@@ -126,7 +126,7 @@ export function Header() {
                   className="ml-1 text-[10px] text-neutral-400 transition-colors hover:text-white"
                   title="Disconnect wallet"
                 >
-                  ✕
+                  x
                 </button>
               </div>
             ) : (
@@ -214,7 +214,7 @@ export function Header() {
 
       {/* Persistent Sitewide Disclaimer Line */}
       <div className="mt-2 text-center text-[10px] font-mono tracking-wider text-neutral-500 uppercase">
-        Institutional Decision-Support Tool — Research & Educational Material Only
+        Institutional Decision-Support Tool. Research & Educational Material Only.
       </div>
     </header>
   );

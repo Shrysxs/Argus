@@ -19,9 +19,9 @@ const jetbrainsMono = JetBrains_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Argus — AI Investment Syndicate",
+  title: "Argus: Institutional Syndicate Platform",
   description:
-    "5 specialized AI agents. One weighted consensus. Every decision sealed on-chain.",
+    "Five specialized quantitative models independently analyze assets, compute weighted consensus, and seal decision records on-chain.",
 };
 
 export default function RootLayout({
