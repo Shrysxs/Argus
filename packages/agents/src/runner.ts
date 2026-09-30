@@ -64,7 +64,7 @@ export async function runAgentPersona(
   const promptFileContent = loadPromptContent(persona.frameworkPromptRef);
   const systemPrompt = promptFileContent
     ? `${promptFileContent}\n\nTask: Analyze MarketDataSnapshot for asset ${snapshot.asset}.\nRespond strictly with valid JSON conforming to the output schema.`
-    : `You are ${persona.name} (${persona.id}), an AI agent in the Argus Investment Syndicate.
+    : `You are ${persona.name} (${persona.id}), a specialized model in the Argus Investment Syndicate.
 Analyze the provided MarketDataSnapshot for asset ${snapshot.asset}.
 Respond strictly with valid JSON with keys: "vote", "confidence", "reasoning", "dataPointsCited".`;
 
