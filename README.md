@@ -1,74 +1,109 @@
-# Argus: Decentralized Investment Syndicate
+# Argus
 
-Argus is an on-chain quantitative investment committee platform. Instead of relying on a single LLM or closed trading bot, Argus orchestrates a syndicate of five specialized models (Value, Momentum, Macro, On-Chain, Risk) that analyze assets independently, vote with confidence scores, reach consensus, and seal decision records on-chain.
+Argus is an on-chain quantitative investment committee platform.
 
-Decisions, market data snapshots, and prompt version hashes are anchored to the Monad network (`DecisionRecorded` events) for verifiable auditability over time.
+## Overview
 
----
+Argus orchestrates a syndicate of independent models that analyze an asset, vote with confidence scores, reach a weighted consensus, and seal the decision and its supporting data on-chain.
 
-## Features
+This architecture creates a verifiable reasoning trail. Unlike a closed trading bot, every decision is auditable. Users can inspect the exact data snapshots used, the reasoning of each agent, and the historical track record of the syndicate.
 
-- **5-Agent Syndicate**: Parallel analysis across Value, Momentum, Macro, On-Chain, and Risk frameworks.
-- **Deterministic Consensus**: Pure mathematical engine for weighted voting, confidence aggregation, and entropy signal pricing.
-- **On-Chain Sealing**: SHA-256 data snapshot and prompt version hashes anchored to Monad testnet registry contract.
-- **Atomic Billing**: PostgreSQL row-locked prepaid credit system to prevent double-spending.
-- **Multi-Provider LLM**: Schema-constrained output validation across Gemini, Groq, OpenAI, and OpenRouter.
+Argus is a research and educational tool. It is not financial advice, and it does not custody funds or execute trades.
 
----
+## Live Demo
 
-## Workspace Architecture
+**URL:** [https://argus-web-beta.vercel.app/signup](https://argus-web-beta.vercel.app/signup)
 
-```
+Users can sign up, analyze a supported asset, view the reasoning of the five agents, and seal a consensus decision on the Monad testnet.
+
+## How It Works
+
+The pipeline executes in sequential stages:
+
+1. **Market Data Snapshot:** The data layer fetches current pricing and metrics for the target asset. This data is hashed (SHA-256) to ensure the exact inputs for a decision are permanently recorded.
+2. **Agent Analysis:** Five specialized agents analyze the data simultaneously. Each agent applies a distinct framework:
+   * `value-hunter`: Graham margin of safety, Damodaran DCF, Buffett moat and owner earnings.
+   * `momentum-trader`: RSI, MACD, EMA, VWAP, and volume confirmed breakouts.
+   * `macro-analyst`: Global M2, Fed policy, DXY, Nasdaq beta, and halving cycles.
+   * `onchain-sleuth`: MVRV, SOPR, exchange netflows, whale accumulation, and long term holder metrics.
+   * `risk-guardian`: Howard Marks cycles, Taleb tail risk, Sharpe and Sortino ratios, and Kelly sizing.
+3. **Consensus Engine:** The system calculates a weighted consensus. The recommendation is determined by the sum of confidence scores for each outcome (Buy, Sell, Hold). The overall syndicate confidence is the winning weight divided by the total weight.
+4. **On-Chain Sealing:** The system records the decision, the data snapshot hash, and the prompt version hash to a registry contract on the Monad testnet.
+5. **Entropy Signal Pricing:** The cost of a decision is determined by the information value of the signal. The price scales based on how much agreement exists among the agents, calculated using the entropy of the vote distribution, multiplied by the realized volatility of the asset.
+
+## Architecture
+
+The repository is structured as a monorepo containing the frontend, smart contracts, and independent packages.
+
+```text
 apps/
-  web/            Next.js app Router & API orchestrator
+  web/              Next.js application, API layer, and orchestrator
+contracts/          Solidity registry contracts for Monad
 packages/
-  agents/         Agent personas & versioned framework prompts
-  chain-adapters/ ChainAdapter interface & Monad implementation
-  consensus/      Pure consensus math & entropy pricing
-  data-layer/     Market data fetchers & snapshot SHA-256 hashing
-  shared-types/   Cross-package TypeScript definitions
-contracts/        Solidity registry smart contracts
+  agents/           Agent configurations and versioned framework prompts
+  chain-adapters/   Chain adapter interfaces and implementations
+  consensus/        Consensus math, entropy pricing, and reputation index
+  data-layer/       Market data fetchers and snapshot hashing
+  shared-types/     Cross-package TypeScript definitions
 ```
 
----
+## Tech Stack
 
-## Environment Setup
+* **Frontend:** Next.js, React, Tailwind CSS
+* **Backend:** Next.js API Routes, Supabase (PostgreSQL) for user data and prepaid credits
+* **Chain:** Solidity, Monad testnet
+* **AI Providers:** Gemini, Groq, OpenAI, OpenRouter (multi-provider with schema constrained output validation)
+* **Infrastructure:** Vercel
 
-No environment variables are pre-configured or included by default.
+## Current Status
 
-Copy `.env.example` to `.env` in the root directory and supply your own keys:
+**Live and Working:**
+* Five agent quantitative syndicate with weighted consensus.
+* Multi provider LLM routing and validation.
+* Data snapshot hashing and Monad testnet anchoring.
+* PostgreSQL row locked prepaid credit system.
 
-```bash
-cp .env.example .env
-```
+**Not Yet Built:**
+* Payment processing beyond the prepaid credit system.
+* Auctions for signal access.
+* Performance carry vaults.
+* Agent reputation bonding curves.
+* Mainnet deployment.
 
-Required keys in `.env`:
-- `MONAD_TESTNET_RPC_URL` & `MONAD_REGISTRY_ADDRESS`
-- `DATABASE_URL` & `DIRECT_URL` (PostgreSQL / Supabase)
-- `NEXT_PUBLIC_SUPABASE_URL` & `NEXT_PUBLIC_SUPABASE_ANON_KEY`
-- `GEMINI_API_KEY`, `GROQ_API_KEY`, `OPENAI_API_KEY`, `OPENROUTER_API_KEY`
+**Known Limitations:**
+* Backend signed on chain sealing is not production ready on serverless environments. The working production path requires a client signed wallet transaction.
 
----
+## Local Setup
 
-## Quickstart
+**Prerequisites:**
+* Node.js
+* PostgreSQL database (e.g., Supabase)
+* Monad testnet wallet
 
+**Environment Variables:**
+Copy `.env.example` to `.env` in the root directory. You must supply:
+* `MONAD_TESTNET_RPC_URL` and `MONAD_REGISTRY_ADDRESS` (for on-chain sealing)
+* `DATABASE_URL` and `DIRECT_URL` (for the PostgreSQL credit system)
+* `NEXT_PUBLIC_SUPABASE_URL` and `NEXT_PUBLIC_SUPABASE_ANON_KEY` (for user authentication)
+* LLM provider keys (`GEMINI_API_KEY`, `GROQ_API_KEY`, `OPENAI_API_KEY`, `OPENROUTER_API_KEY`)
+
+**Installation and Execution:**
 ```bash
 # Install dependencies
 npm install
 
-# Start local development server
+# Start the local development server
 npm run dev
-
-# Typecheck and lint
-npm run typecheck
-npm run lint
-
-# Smart contract tests
-cd contracts && forge test
 ```
 
----
+## Origin
+
+Argus originated as the Penguin Protocol prototype built during the Monad Blitz Pune hackathon. This repository is the production rebuild under the name Argus.
 
 ## Disclaimer
 
-Argus is a decision-support framework. It does not custody funds or provide licensed financial advice.
+Argus is a decision support framework built for research and educational purposes only. It is not licensed financial advice. The models and consensus engine can be wrong. You are solely responsible for your own financial decisions.
+
+## Contact
+
+Maintained by Shreyas ([GitHub](https://github.com/shrysxs)).
