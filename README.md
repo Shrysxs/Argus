@@ -85,16 +85,8 @@ Copy `.env.example` to `.env` in the root directory. You must supply:
 * `MONAD_TESTNET_RPC_URL` and `MONAD_REGISTRY_ADDRESS` (for on-chain sealing)
 * `DATABASE_URL` and `DIRECT_URL` (for the PostgreSQL credit system)
 * `NEXT_PUBLIC_SUPABASE_URL` and `NEXT_PUBLIC_SUPABASE_ANON_KEY` (for user authentication)
-* LLM provider keys (`GEMINI_API_KEY`, `GROQ_API_KEY`, `OPENAI_API_KEY`, `OPENROUTER_API_KEY`)
+* LLM provider keys (`OPENROUTER_API_KEY`)
 
-**Installation and Execution:**
-```bash
-# Install dependencies
-npm install
-
-# Start the local development server
-npm run dev
-```
 
 ## Origin
 
