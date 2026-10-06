@@ -1,8 +1,6 @@
-# Argus — Decentralized AI Investment Syndicate
+# Argus
 
-Argus is an on-chain quantitative investment committee platform. Instead of relying on a single language model or a closed trading bot, Argus orchestrates a syndicate of specialized, independent AI models that evaluate assets using distinct analytical frameworks, vote with explicit confidence metrics, reach deterministic consensus, and seal decisions immutably on-chain.
-
-Every decision, the underlying market data snapshot, and each agent's reasoning text is cryptographically hashed and anchored on the Monad network, providing a transparent, verifiable audit trail over time.
+Argus is an on-chain quantitative decision platform. It runs five analytical frameworks on market data snapshots, calculates a confidence-weighted consensus, and records decisions and data hashes on Monad testnet.
 
 ---
 
@@ -10,157 +8,107 @@ Every decision, the underlying market data snapshot, and each agent's reasoning 
 
 **Web Application:** [https://argus-web-beta.vercel.app/signup](https://argus-web-beta.vercel.app/signup)
 
-Users can sign up, analyze supported crypto assets (BTC, ETH, SOL, LINK, DOGE), inspect the independent reasoning and data citations of all five agents, evaluate the weighted consensus recommendation, and seal the decision on the Monad testnet.
+Users can sign up, analyze supported assets (BTC, ETH, SOL, LINK, DOGE), view framework reasoning and citations, check consensus results, and seal decisions on Monad testnet.
 
 ---
 
-## Key Features
+## Features
 
-- **5-Agent Quantitative Syndicate:** Specialized agents running distinct financial frameworks (Value, Momentum, Macro, On-chain, and Risk) in parallel.
-- **Deterministic Consensus Engine:** Pure, dependency-free mathematical engine aggregating confidence-weighted votes and flagging syndicate disagreements.
-- **Data Provenance & Cryptographic Auditability:** Canonical SHA-256 hashing of market data snapshots, prompt versions, and agent reasoning.
-- **On-Chain Sealing on Monad:** Immutable event recording (`DecisionRecorded`) on the Monad testnet registry contract.
-- **Entropy-Based Signal Pricing:** Dynamic signal pricing scaled by information entropy reduction and asset volatility.
-- **Concurrency-Safe Prepaid Billing:** PostgreSQL row-level locks prevent race conditions and double-spending across parallel analysis runs.
-- **Multi-Provider LLM Orchestration:** Robust routing with schema-constrained JSON output validation across Groq, OpenRouter, Google Gemini, and OpenAI.
+- **5 Analytical Frameworks:** Evaluates assets across Value, Momentum, Macro, On-chain, and Risk models in parallel.
+- **Deterministic Consensus:** Pure math engine aggregating confidence-weighted votes and tracking outcome distribution.
+- **Cryptographic Audit Trail:** SHA-256 hashing for market snapshots, prompt versions, and output reasoning.
+- **On-Chain Recording:** Anchors decision payloads to the Monad testnet registry contract (`DecisionRegistry.sol`).
+- **Entropy-Based Pricing:** Signals are priced using Shannon entropy of the vote distribution and asset volatility.
+- **Atomic Credit Billing:** PostgreSQL row-level locks prevent race conditions and balance overdrafts.
+- **Provider Routing:** Supports Groq, OpenRouter, Google Gemini, and OpenAI with JSON schema validation.
 
 ---
 
-## The AI Syndicate Roster
+## Analytical Frameworks
 
-Argus departs from generic prompts by enforcing strict analytical frameworks and bias constraints per agent. Prompts are versioned as markdown files in `packages/agents/prompts/` rather than hardcoded inline strings.
+Prompts are stored as versioned markdown files in `packages/agents/prompts/`.
 
-| Agent Persona | Framework & Philosophy | Analytical Bias Constraint | Default Model |
+| ID | Framework | Focus | Default Model |
 |---|---|---|---|
-| **Value Hunter** (`value-hunter`) | Graham margin of safety, Damodaran DCF, Buffett economic moat & owner earnings | Rejects speculative hype & unbacked multiples | `openai/gpt-oss-20b` (via Groq) |
-| **Momentum Trader** (`momentum-trader`) | RSI, MACD, EMA, VWAP, and volume-confirmed breakout patterns | Prioritizes immediate trend and momentum velocity | `openai/gpt-oss-20b` (via Groq) |
-| **Macro Analyst** (`macro-analyst`) | Global M2 money supply, Fed rate policy, DXY, Nasdaq correlation, halving cycles | Thinks globally and cyclically across macro regimes | `openai/gpt-oss-20b` (via Groq) |
-| **On-chain Sleuth** (`onchain-sleuth`) | MVRV, SOPR, exchange netflows, whale accumulation, LTH/STH cost basis | Thinks blockchain-first from transparent ledger flows | `openai/gpt-oss-20b` (via Groq) |
-| **Risk Guardian** (`risk-guardian`) | Howard Marks market cycles, Taleb tail-risk distribution, Sharpe/Sortino ratios, Kelly sizing | Stays cautious, stress-tests downside risk assumptions | `openai/gpt-oss-20b` (via Groq) |
+| `value-hunter` | Graham margin of safety, Damodaran DCF, Buffett moat | Fundamental value, multiples | `openai/gpt-oss-20b` (Groq) |
+| `momentum-trader` | RSI, MACD, EMA, VWAP, volume breakouts | Trend confirmation, velocity | `openai/gpt-oss-20b` (Groq) |
+| `macro-analyst` | Global M2, Fed policy, DXY, correlation cycles | Macro regime and liquidity | `openai/gpt-oss-20b` (Groq) |
+| `onchain-sleuth` | MVRV, SOPR, exchange netflows, whale activity | Ledger flows, holder distribution | `openai/gpt-oss-20b` (Groq) |
+| `risk-guardian` | Market cycles, tail risk, Sharpe ratio, Kelly sizing | Downside protection, sizing | `openai/gpt-oss-20b` (Groq) |
 
-> **Single-Key Fanout:** A single LLM API key (such as a free `GROQ_API_KEY`) is all that is required to power all 5 agents concurrently. Argus fans out parallel requests across the syndicate simultaneously.
+A single LLM API key (e.g. `GROQ_API_KEY`) runs all five evaluations in parallel.
 
 ---
 
-## How It Works
+## Execution Pipeline
 
-```
-┌────────────────────────────────────────────────────────┐
-│                   1. Market Data Layer                 │
-│      Fetches live price, volume, 24h delta, F&G        │
-│          Generates canonical SHA-256 snapshot          │
-└───────────────────────────┬────────────────────────────┘
-                            │
-                            ▼
-┌────────────────────────────────────────────────────────┐
-│               2. Parallel Syndicate Fan-Out            │
-│    Value Hunter  Momentum  Macro  On-chain  Risk       │
-│    5 parallel LLM inferences with schema constraints   │
-└───────────────────────────┬────────────────────────────┘
-                            │
-                            ▼
-┌────────────────────────────────────────────────────────┐
-│                 3. Consensus Engine                    │
-│   Sums weighted confidence scores per direction:       │
-│               BUY  /  SELL  /  HOLD                    │
-│     Computes syndicate confidence & disagreement       │
-└───────────────────────────┬────────────────────────────┘
-                            │
-                            ▼
-┌────────────────────────────────────────────────────────┐
-│             4. Entropy Pricing & Billing               │
-│   Calculates signal price via Shannon entropy drop     │
-│   Deducts balance atomically via PostgreSQL row lock   │
-└───────────────────────────┬────────────────────────────┘
-                            │
-                            ▼
-┌────────────────────────────────────────────────────────┐
-│              5. On-Chain Decision Sealing              │
-│   Records recommendation, confidence, snapshot hash,   │
-│   and prompt version hash to Monad registry contract   │
-└────────────────────────────────────────────────────────┘
-```
-
-1. **Market Data Snapshot:** Live price data (CoinGecko) and sentiment (Fear & Greed Index) are normalized into a canonical payload and hashed using SHA-256 (`packages/data-layer`).
-2. **Syndicate Deliberation:** The orchestrator fans out 5 requests to the LLM runner (`packages/agents`). Each agent returns a validated JSON object with `vote`, `confidence` (0–100), `reasoning`, and `dataPointsCited`.
-3. **Consensus Aggregation:** The pure math engine (`packages/consensus`) computes:
+1. **Data Snapshot:** Fetches price (CoinGecko) and sentiment (Fear & Greed Index) and generates a SHA-256 hash (`packages/data-layer`).
+2. **Parallel Evaluation:** Fans out five requests with structured JSON schemas (`packages/agents`).
+3. **Consensus Calculation:** Calculates weighted score:
    $$\text{Weight}_d = \sum_{i : \text{vote}_i = d} \text{confidence}_i$$
-   $$\text{Syndicate Confidence} = \frac{\text{Weight}_{\text{winner}}}{\sum_d \text{Weight}_d} \times 100$$
-   A `disagreement` flag is raised if competing outcomes are within a narrow margin.
-4. **Entropy Signal Pricing:** Signals are dynamically priced based on the information entropy of the vote distribution:
+   $$\text{Confidence} = \frac{\text{Weight}_{\text{winner}}}{\sum_d \text{Weight}_d} \times 100$$
+4. **Entropy Pricing:** Signal cost scales with vote consensus and asset volatility:
    $$H(p) = -\sum_d p_d \log_2 p_d \qquad I = \log_2(3) - H(p)$$
-   High syndicate consensus yields higher information value and pricing.
-5. **On-Chain Sealing:** The user can permanently anchor the decision record to the Monad testnet registry contract (`contracts/DecisionRegistry.sol`) via client wallet signing.
+5. **On-Chain Sealing:** Writes recommendation, confidence, snapshot hash, and prompt hash to the Monad registry contract via client wallet.
 
 ---
 
 ## Repository Structure
 
-Argus is organized as a Turborepo monorepo with strict package boundaries:
-
 ```text
 argus/
 ├── apps/
-│   └── web/                  # Next.js App Router, UI components, API route handlers
+│   └── web/              # Next.js frontend, UI components, and API routes
 ├── packages/
-│   ├── agents/               # Syndicate runner, agent personas & versioned prompt files
-│   ├── chain-adapters/       # ChainAdapter abstraction & Monad testnet implementation
-│   ├── consensus/            # Pure mathematical functions (consensus, entropy pricing)
-│   ├── data-layer/           # Market data fetchers (CoinGecko, F&G) & SHA-256 snapshot hasher
-│   ├── shared-types/         # Cross-package TypeScript interfaces & schemas
-│   └── ui/                   # Shared UI primitives
-├── contracts/                # Solidity registry contracts for Monad testnet
-├── docs/                     # Specifications, architecture roadmaps & prompt changelogs
+│   ├── agents/           # Runner and versioned framework prompts
+│   ├── chain-adapters/   # ChainAdapter interface and Monad implementation
+│   ├── consensus/        # Consensus math and entropy pricing
+│   ├── data-layer/       # Market data fetchers and SHA-256 snapshot hasher
+│   ├── shared-types/     # Shared TypeScript definitions
+│   └── ui/               # Shared UI primitives
+├── contracts/            # Solidity registry contracts for Monad testnet
 └── README.md
 ```
 
 ---
 
-## API Routes Reference
-
-All backend functionality is exposed via Next.js API routes under `apps/web/app/api`:
+## API Routes
 
 | Route | Method | Description |
 |---|---|---|
-| `/api/analyze` | `POST` | Fetches market snapshot, fans out to 5 agents, computes consensus, and stores unsealed result. |
-| `/api/record` | `POST` | Seals an analysis decision on the Monad testnet registry contract. |
-| `/api/pricing/signal` | `POST` | Computes entropy-based signal price and atomically deducts credits using Postgres row locks. |
-| `/api/billing/balance` | `GET` | Returns current user's available USD credit balance. |
-| `/api/billing/topup` | `POST` | Administrative credit grant endpoint (requires `isAdmin: true`). |
-| `/api/history` | `GET` | Retrieves authenticated user's past analyses and on-chain sealing status. |
-| `/api/auth/signup` | `POST` | Creates a new user account with default starting credits ($25.00). |
-| `/api/auth/login` | `POST` | Authenticates user credentials and establishes a secure session cookie. |
-| `/api/auth/me` | `GET` | Returns currently logged-in user profile and credit balance. |
-| `/api/health` | `GET` | Liveness and health check endpoint for monitoring. |
+| `/api/analyze` | `POST` | Fetches snapshot, runs 5 frameworks, computes consensus. |
+| `/api/record` | `POST` | Records decision on Monad testnet registry contract. |
+| `/api/pricing/signal` | `POST` | Computes signal price and deducts balance via PostgreSQL row lock. |
+| `/api/billing/balance` | `GET` | Returns user's credit balance. |
+| `/api/billing/topup` | `POST` | Admin grant route (requires `isAdmin: true`). |
+| `/api/history` | `GET` | Returns user's past analyses. |
+| `/api/auth/signup` | `POST` | Registers a new account ($25.00 default credit). |
+| `/api/auth/login` | `POST` | Authenticates user and sets session cookie. |
+| `/api/auth/me` | `GET` | Returns current user profile. |
+| `/api/health` | `GET` | Service health check. |
 
 ---
 
 ## Tech Stack
 
-- **Frontend:** Next.js (App Router), React 19, Tailwind CSS v4, Lucide Icons
+- **Frontend:** Next.js (App Router), React 19, Tailwind CSS v4
 - **Backend & Storage:** Next.js API Routes, Prisma ORM, Supabase (PostgreSQL)
-- **Blockchain:** Solidity, Monad Testnet (RPC: `https://testnet-rpc.monad.xyz`)
-- **AI Providers:** Groq, OpenRouter, Google Gemini, OpenAI (OpenAI-compatible JSON mode)
-- **Monorepo Tooling:** Turborepo, npm workspaces, TypeScript
+- **Chain:** Solidity, Monad Testnet (`https://testnet-rpc.monad.xyz`)
+- **LLM Providers:** Groq, OpenRouter, Google Gemini, OpenAI
+- **Tooling:** Turborepo, npm workspaces, TypeScript
 
 ---
 
 ## Environment Setup
 
-### 1. Prerequisites
-- **Node.js:** v20+
-- **npm:** v10+
-- **PostgreSQL Database:** Supabase or local PostgreSQL instance
-- **Web3 Wallet:** EVM wallet connected to Monad testnet
-
-### 2. Configure Environment Variables
-Copy `.env.example` to `.env` in the root directory (and in `apps/web/.env` if developing web directly):
+### 1. Configure Environment Variables
+Copy `.env.example` to `.env`:
 
 ```bash
 cp .env.example .env
 ```
 
-Populate the variables:
+Variables:
 
 ```env
 # Monad Testnet Configuration
@@ -176,70 +124,46 @@ NEXT_PUBLIC_SUPABASE_ANON_KEY="your-anon-key"
 SUPABASE_URL="https://your-supabase-project.supabase.co"
 SUPABASE_ANON_KEY="your-anon-key"
 
-# LLM Provider Keys (At least one is required)
-GROQ_API_KEY=""         # Recommended (free high-speed inference for open-source models)
-OPENROUTER_API_KEY=""   # Optional (access to open-source models and free tier)
-GEMINI_API_KEY=""       # Optional (Google AI Studio free tier)
-OPENAI_API_KEY=""       # Optional (OpenAI API key)
+# LLM Provider Keys (At least one required)
+GROQ_API_KEY=""         # Free tier at console.groq.com/keys
+OPENROUTER_API_KEY=""   # Free tier at openrouter.ai/keys
+GEMINI_API_KEY=""       # Free tier at aistudio.google.com/app/apikey
+OPENAI_API_KEY=""
 
 # Web App Configuration
 NEXT_PUBLIC_APP_URL="http://localhost:3000"
 COOKIE_SECURE="false"   # Set to "true" in HTTPS production
 ```
 
-> **Free Open-Source API Key Options:**
-> - **Groq:** Free tier with high throughput on open-weight models (`openai/gpt-oss-20b`, `llama-3.3-70b-versatile`). Get a key at [console.groq.com/keys](https://console.groq.com/keys).
-> - **OpenRouter:** Free access to open-weight models ending in `:free`. Get a key at [openrouter.ai/keys](https://openrouter.ai/keys).
-> - **Google AI Studio:** Free tier (15 RPM / 1,500 RPD) for Gemini models. Get a key at [aistudio.google.com/app/apikey](https://aistudio.google.com/app/apikey).
-
-### 3. Install & Run Locally
+### 2. Install & Run Locally
 
 ```bash
-# Install workspace dependencies
+# Install dependencies
 npm install
 
-# Run database migrations / Prisma generation
+# Generate Prisma client
 npm run postinstall
 
 # Start development server
 npm run dev
 ```
 
-The application will be running at [http://localhost:3000](http://localhost:3000).
-
----
-
-## Current Status & Roadmap
-
-### Live & Verified
-- [x] 5-agent quantitative syndicate with framework prompts and output validation.
-- [x] Multi-provider LLM failover and OpenAI-compatible endpoint routing.
-- [x] Canonical market data snapshot hashing (SHA-256).
-- [x] Monad testnet registry contract integration and client wallet signing.
-- [x] Concurrency-safe PostgreSQL row-locked prepaid credit system.
-- [x] End-to-end user authentication, session security, and rate limiting.
-
-### Roadmap
-- [ ] Automated log indexer for historical reputation tracking.
-- [ ] Reputation-weighted consensus blending historical agent Brier scores.
-- [ ] Production relayer/signer service for gasless sealing.
-- [ ] External payment gateway integration (Stripe / crypto top-ups).
-- [ ] Multi-chain adapter expansions (Base, Arbitrum, Solana).
+App runs at [http://localhost:3000](http://localhost:3000).
 
 ---
 
 ## Origin
 
-Argus originated as the **Penguin Protocol** prototype built during the **Monad Blitz Pune** hackathon. This repository represents the production-oriented architecture and redesign under the name **Argus**.
+Argus originated as the Penguin Protocol prototype built during the Monad Blitz Pune hackathon.
 
 ---
 
 ## Disclaimer
 
-Argus is an experimental decision-support and quantitative research platform. It is not licensed financial, investment, or legal advice. The models and consensus engine can produce erroneous or hallucinated outputs. Never risk funds based solely on automated signals. You are exclusively responsible for your own financial decisions.
+Argus is an experimental decision-support tool for research purposes only. It does not provide financial or investment advice, custody funds, or execute trades.
 
 ---
 
-## Contact & Maintainer
+## Contact
 
 Maintained by **Shreyas** ([GitHub](https://github.com/shrysxs)).
