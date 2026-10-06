@@ -49,12 +49,13 @@ export async function runAgentPersona(
   const apiKey =
     options.apiKey ||
     process.env.GROQ_API_KEY ||
-    process.env.OPENAI_API_KEY ||
-    process.env.OPENROUTER_API_KEY;
+    process.env.OPENROUTER_API_KEY ||
+    process.env.GEMINI_API_KEY ||
+    process.env.OPENAI_API_KEY;
 
   if (!apiKey) {
     throw new Error(
-      `No LLM API key configured for agent execution (GROQ_API_KEY, OPENAI_API_KEY, or OPENROUTER_API_KEY required).`,
+      `No LLM API key configured for agent execution (GROQ_API_KEY, OPENROUTER_API_KEY, GEMINI_API_KEY, or OPENAI_API_KEY required).`,
     );
   }
 
@@ -74,17 +75,31 @@ ${JSON.stringify(snapshot.data, null, 2)}
 Sources available: ${snapshot.sources.join(", ")}`;
 
   try {
-    const isGroq = apiKey.startsWith("gsk_");
-    const endpoint = isGroq
-      ? "https://api.groq.com/openai/v1/chat/completions"
-      : "https://api.openai.com/v1/chat/completions";
+    const isGroq = apiKey.startsWith("gsk_") || Boolean(process.env.GROQ_API_KEY && apiKey === process.env.GROQ_API_KEY);
+    const isOpenRouter = apiKey.startsWith("sk-or-") || Boolean(process.env.OPENROUTER_API_KEY && apiKey === process.env.OPENROUTER_API_KEY);
+    const isGemini = Boolean(process.env.GEMINI_API_KEY && apiKey === process.env.GEMINI_API_KEY);
+
+    let endpoint = "https://api.openai.com/v1/chat/completions";
+    if (isGroq) {
+      endpoint = "https://api.groq.com/openai/v1/chat/completions";
+    } else if (isOpenRouter) {
+      endpoint = "https://openrouter.ai/api/v1/chat/completions";
+    } else if (isGemini) {
+      endpoint = "https://generativelanguage.googleapis.com/v1beta/openai/chat/completions";
+    }
+
+    const headers: Record<string, string> = {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${apiKey}`,
+    };
+    if (isOpenRouter) {
+      headers["HTTP-Referer"] = "https://argus.io";
+      headers["X-Title"] = "Argus Investment Syndicate";
+    }
 
     const response = await fetchImpl(endpoint, {
       method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${apiKey}`,
-      },
+      headers,
       body: JSON.stringify({
         model,
         messages: [
