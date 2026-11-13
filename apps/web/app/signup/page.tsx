@@ -213,6 +213,13 @@ function SignupPageForm() {
               )}
               {loading ? "Registering Credential…" : "Register Credential"}
             </button>
+            <p className="text-[11px] leading-relaxed text-muted-foreground">
+              By creating an account you agree to the{" "}
+              <Link href="/legal/terms" className="underline hover:text-foreground">Terms of service</Link> and{" "}
+              <Link href="/legal/privacy" className="underline hover:text-foreground">Privacy policy</Link>, and acknowledge the{" "}
+              <Link href="/legal/disclaimer" className="underline hover:text-foreground">risk disclaimer</Link>. You&apos;ll get
+              $25 of starter credits.
+            </p>
           </form>
 
           <p className="mt-6 text-center text-xs text-muted-foreground font-mono">
