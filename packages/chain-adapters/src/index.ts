@@ -8,12 +8,13 @@ import type {
   DecisionPayload,
   DecisionRecord,
   LogFilter,
+  VerifiedDecision,
   WalletSession,
 } from "@argus/shared-types";
 
 // Re-export shared types so consumers can import everything chain-related
 // from a single package if they prefer.
-export type { DecisionPayload, DecisionRecord, LogFilter, WalletSession };
+export type { DecisionPayload, DecisionRecord, LogFilter, VerifiedDecision, WalletSession };
 
 /**
  * Chain-agnostic interface for on-chain operations (AGENTS.md §4.1).
@@ -73,6 +74,16 @@ export interface ChainAdapter {
   getDecisionLogs(filter?: LogFilter): Promise<DecisionRecord[]>;
 
   /**
+   * Independently confirm a decision transaction (e.g. one signed by a user's
+   * own wallet): it must be confirmed, successful, sent to the registry, and
+   * carry a DecisionRecorded event matching `expected` field-for-field.
+   *
+   * @throws If any of those checks fail. Callers must never trust a
+   *         client-supplied tx hash without this check.
+   */
+  verifyDecision(txHash: string, expected: DecisionPayload): Promise<VerifiedDecision>;
+
+  /**
    * Get the native token balance of the given wallet address.
    *
    * Must guarantee:
@@ -108,12 +119,16 @@ export interface ChainAdapter {
 
 export { MonadChainAdapter, monadChainAdapter } from "./monad";
 export type { MonadChainAdapterConfig } from "./monad";
+export { BrowserMonadChainAdapter, browserMonadChainAdapter } from "./browser-monad";
 export {
-  BrowserMonadChainAdapter,
-  browserMonadChainAdapter,
+  DEFAULT_MONAD_REGISTRY_ADDRESS,
   MONAD_TESTNET_CHAIN_ID,
   MONAD_TESTNET_HEX_CHAIN_ID,
-} from "./browser-monad";
+  MONAD_TESTNET_EXPLORER_URL,
+  REGISTRY_ABI,
+  encodeDecision,
+  explorerTxUrl,
+} from "./registry";
 export type { BrowserMonadConfig } from "./browser-monad";
 
 

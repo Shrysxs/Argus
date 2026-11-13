@@ -1,147 +1,197 @@
-import { execFile } from "node:child_process";
-import { promisify } from "node:util";
+import {
+  createPublicClient,
+  createWalletClient,
+  http,
+  parseEventLogs,
+  type Hex,
+  type PublicClient,
+} from "viem";
+import { privateKeyToAccount, type PrivateKeyAccount } from "viem/accounts";
+import { monadTestnet } from "viem/chains";
 import type {
   DecisionPayload,
   DecisionRecord,
   LogFilter,
+  VerifiedDecision,
   WalletSession,
 } from "@argus/shared-types";
-import type { ChainAdapter } from "./index.js";
-
-const execFileAsync = promisify(execFile);
+import type { ChainAdapter } from "./index";
+import {
+  DEFAULT_MONAD_REGISTRY_ADDRESS,
+  MONAD_TESTNET_CHAIN_ID,
+  MONAD_TESTNET_RPC_URL,
+  REGISTRY_ABI,
+  decisionArgs,
+  encodeDecision,
+} from "./registry";
 
 export interface MonadChainAdapterConfig {
   registryAddress?: string;
   rpcUrl?: string;
-  keystoreAccount?: string;
-  keystorePassword?: string;
+  /** 0x-prefixed private key of the backend relayer. Prefer a KMS/relayer in production. */
+  signerPrivateKey?: string;
+  publicClient?: PublicClient;
 }
 
-export class MonadChainAdapter implements ChainAdapter {
-  readonly chainId = 10143; // Monad Testnet
+const LOG_CHUNK_BLOCKS = 100n;
+const DEFAULT_LOOKBACK_BLOCKS = 1_000n;
 
-  private registryAddress: string;
-  private rpcUrl: string;
-  private keystoreAccount: string;
-  private keystorePassword: string;
+/**
+ * Server-side Monad adapter (viem). Signs with a relayer key from
+ * MONAD_SIGNER_PRIVATE_KEY and can independently verify any decision
+ * transaction by decoding its DecisionRecorded event.
+ */
+export class MonadChainAdapter implements ChainAdapter {
+  readonly chainId = MONAD_TESTNET_CHAIN_ID;
+  readonly registryAddress: Hex;
+  private readonly rpcUrl: string;
+  private readonly signerKey?: string;
+  private _public?: PublicClient;
+  private _account?: PrivateKeyAccount;
 
   constructor(config: MonadChainAdapterConfig = {}) {
-    this.registryAddress =
-      config.registryAddress ||
+    this.registryAddress = (config.registryAddress ||
       process.env.MONAD_REGISTRY_ADDRESS ||
-      "0x1001b9A1c69E513F7D463e3578bDeE7B94295919";
-    this.rpcUrl =
-      config.rpcUrl ||
-      process.env.MONAD_TESTNET_RPC_URL ||
-      "https://testnet-rpc.monad.xyz";
-    this.keystoreAccount =
-      config.keystoreAccount || process.env.MONAD_KEYSTORE_ACCOUNT || "monad-deployer";
-    this.keystorePassword =
-      config.keystorePassword ?? process.env.MONAD_KEYSTORE_PASSWORD ?? "";
+      DEFAULT_MONAD_REGISTRY_ADDRESS) as Hex;
+    this.rpcUrl = config.rpcUrl || process.env.MONAD_TESTNET_RPC_URL || MONAD_TESTNET_RPC_URL;
+    this.signerKey = config.signerPrivateKey ?? process.env.MONAD_SIGNER_PRIVATE_KEY;
+    this._public = config.publicClient;
   }
 
-  private formatBytes32(hash: string): string {
-    let clean = hash.trim();
-    if (!clean.startsWith("0x")) {
-      clean = `0x${clean}`;
+  protected get publicClient(): PublicClient {
+    this._public ??= createPublicClient({ chain: monadTestnet, transport: http(this.rpcUrl) }) as PublicClient;
+    return this._public;
+  }
+
+  private get account(): PrivateKeyAccount {
+    if (!this._account) {
+      if (!this.signerKey || !/^0x[0-9a-fA-F]{64}$/.test(this.signerKey)) {
+        throw new Error("Backend signer is not configured (MONAD_SIGNER_PRIVATE_KEY missing or invalid)");
+      }
+      this._account = privateKeyToAccount(this.signerKey as Hex);
     }
-    if (!/^0x[0-9a-fA-F]{64}$/.test(clean)) {
-      throw new Error(`Invalid bytes32 hash string: ${hash}`);
-    }
-    return clean;
+    return this._account;
+  }
+
+  get signerConfigured(): boolean {
+    return Boolean(this.signerKey && /^0x[0-9a-fA-F]{64}$/.test(this.signerKey));
   }
 
   async recordDecision(input: DecisionPayload): Promise<{ txHash: string }> {
-    const asset = input.asset?.trim()?.toUpperCase();
-    if (!asset) {
-      throw new Error("Invalid payload: asset must not be empty");
-    }
+    const encoded = encodeDecision(input);
+    const wallet = createWalletClient({ account: this.account, chain: monadTestnet, transport: http(this.rpcUrl) });
 
-    const decision = input.consensus?.recommendation;
-    if (!decision || !["BUY", "SELL", "HOLD"].includes(decision)) {
-      throw new Error("Invalid payload: recommendation must be BUY, SELL, or HOLD");
-    }
-
-    const rawConf = input.consensus?.confidence;
-    if (typeof rawConf !== "number" || isNaN(rawConf) || rawConf < 0 || rawConf > 100) {
-      throw new Error("Invalid payload: confidence must be a number between 0 and 100");
-    }
-
-    const confidenceBps = Math.round(rawConf * 100);
-    if (confidenceBps < 0 || confidenceBps > 10000) {
-      throw new Error("Invalid payload: confidence in basis points must be 0..10000");
-    }
-
-    const dataSnapshotHash = this.formatBytes32(input.dataSnapshotHash);
-    const promptVersionHash = this.formatBytes32(
-      input.promptVersionHash || input.reasoningHash
-    );
-
-    const tsMs = typeof input.timestamp === "number" ? input.timestamp : Date.now();
-    const timestampSec = Math.floor(tsMs > 1e11 ? tsMs / 1000 : tsMs);
-
-    const castArgs = [
-      "send",
-      this.registryAddress,
-      "recordDecision(string,string,uint256,bytes32,bytes32,uint256)",
-      asset,
-      decision,
-      confidenceBps.toString(),
-      dataSnapshotHash,
-      promptVersionHash,
-      timestampSec.toString(),
-      "--rpc-url",
-      this.rpcUrl,
-      "--account",
-      this.keystoreAccount,
-      "--password",
-      this.keystorePassword,
-    ];
-
+    let txHash: Hex;
     try {
-      const { stdout, stderr } = await execFileAsync("cast", castArgs);
-      const output = `${stdout}\n${stderr}`;
-
-      // Check status in receipt
-      if (output.includes("status               0 (failure)") || output.includes("status               0")) {
-        throw new Error(`On-chain transaction reverted: ${output}`);
-      }
-
-      const match = output.match(/transactionHash\s+(0x[0-9a-fA-F]{64})/);
-      if (!match || !match[1]) {
-        throw new Error(`Could not parse transaction hash from cast output:\n${output}`);
-      }
-
-      return { txHash: match[1] };
-    } catch (err: unknown) {
-      if (err instanceof Error && err.message.includes("On-chain transaction reverted")) {
-        throw err;
-      }
-      const errOutput = err instanceof Error ? err.message : String(err);
-      throw new Error(`On-chain recordDecision failed: ${errOutput}`);
+      txHash = await wallet.writeContract({
+        address: this.registryAddress,
+        abi: REGISTRY_ABI,
+        functionName: "recordDecision",
+        args: decisionArgs(encoded),
+      });
+    } catch (err) {
+      throw new Error(`On-chain recordDecision failed: ${err instanceof Error ? err.message : String(err)}`);
     }
+
+    const receipt = await this.publicClient.waitForTransactionReceipt({ hash: txHash, timeout: 60_000 });
+    if (receipt.status !== "success") {
+      throw new Error(`On-chain transaction reverted: ${txHash}`);
+    }
+    return { txHash };
   }
 
-  async getDecisionLogs(_filter?: LogFilter): Promise<DecisionRecord[]> {
-    return [];
+  /**
+   * Confirm that `txHash` is a successful call to the registry whose
+   * DecisionRecorded event matches `expected` exactly. Throws otherwise.
+   */
+  async verifyDecision(txHash: string, expected: DecisionPayload): Promise<VerifiedDecision> {
+    if (!/^0x[0-9a-fA-F]{64}$/.test(txHash)) throw new Error("Invalid transaction hash");
+    const want = encodeDecision(expected);
+
+    const receipt = await this.publicClient.getTransactionReceipt({ hash: txHash as Hex }).catch(() => null);
+    if (!receipt) throw new Error("Transaction not found or not yet mined");
+    if (receipt.status !== "success") throw new Error("Transaction reverted");
+
+    const events = parseEventLogs({ abi: REGISTRY_ABI, logs: receipt.logs, eventName: "DecisionRecorded" }).filter(
+      (l) => l.address.toLowerCase() === this.registryAddress.toLowerCase(),
+    );
+    const match = events.find(
+      (e) =>
+        e.args.asset === want.asset &&
+        e.args.decision === want.decision &&
+        e.args.confidence === want.confidenceBps &&
+        e.args.dataSnapshotHash.toLowerCase() === want.dataSnapshotHash &&
+        e.args.promptVersionHash.toLowerCase() === want.promptVersionHash &&
+        e.args.timestamp === want.timestampSec,
+    );
+    if (!match) {
+      throw new Error("Transaction does not contain a DecisionRecorded event matching this analysis");
+    }
+    return { txHash, sender: match.args.sender, blockNumber: receipt.blockNumber.toString() };
+  }
+
+  async getDecisionLogs(filter: LogFilter = {}): Promise<DecisionRecord[]> {
+    const latest = await this.publicClient.getBlockNumber();
+    const start = latest > DEFAULT_LOOKBACK_BLOCKS ? latest - DEFAULT_LOOKBACK_BLOCKS : 0n;
+    const records: DecisionRecord[] = [];
+
+    // Public Monad RPC limits eth_getLogs ranges, so scan in chunks.
+    for (let from = start; from <= latest; from += LOG_CHUNK_BLOCKS) {
+      const to = from + LOG_CHUNK_BLOCKS - 1n > latest ? latest : from + LOG_CHUNK_BLOCKS - 1n;
+      const logs = await this.publicClient.getContractEvents({
+        address: this.registryAddress,
+        abi: REGISTRY_ABI,
+        eventName: "DecisionRecorded",
+        fromBlock: from,
+        toBlock: to,
+      });
+      for (const log of logs) {
+        const a = log.args;
+        const tsMs = Number(a.timestamp) * 1000;
+        if (filter.asset && a.asset !== filter.asset.toUpperCase()) continue;
+        if (filter.fromTimestamp && tsMs < filter.fromTimestamp) continue;
+        if (filter.toTimestamp && tsMs > filter.toTimestamp) continue;
+        records.push({
+          asset: a.asset!,
+          timestamp: tsMs,
+          consensus: {
+            recommendation: a.decision as "BUY" | "SELL" | "HOLD",
+            confidence: Number(a.confidence) / 100,
+            breakdown: { BUY: 0, SELL: 0, HOLD: 0 },
+            disagreement: false,
+            agentVotes: [],
+          },
+          dataSnapshotHash: a.dataSnapshotHash!,
+          promptVersionHash: a.promptVersionHash!,
+          reasoningHash: "",
+          txHash: log.transactionHash,
+        });
+      }
+    }
+    return records;
   }
 
   async getWalletBalance(address: string): Promise<bigint> {
-    const { stdout } = await execFileAsync("cast", [
-      "balance",
-      address,
-      "--rpc-url",
-      this.rpcUrl,
-    ]);
-    return BigInt(stdout.trim());
+    return this.publicClient.getBalance({ address: address as Hex });
   }
 
   async connectWallet(): Promise<WalletSession> {
-    throw new Error("Client wallet connect is deferred — backend signer path only");
+    return { address: this.account.address, chainId: this.chainId };
   }
 
-  async estimateFee(_input: DecisionPayload): Promise<bigint> {
-    return 100000n;
+  async estimateFee(input: DecisionPayload): Promise<bigint> {
+    const encoded = encodeDecision(input);
+    const [gas, gasPrice] = await Promise.all([
+      this.publicClient.estimateContractGas({
+        address: this.registryAddress,
+        abi: REGISTRY_ABI,
+        functionName: "recordDecision",
+        args: decisionArgs(encoded),
+        account: this.account,
+      }),
+      this.publicClient.getGasPrice(),
+    ]);
+    return gas * gasPrice;
   }
 }
 

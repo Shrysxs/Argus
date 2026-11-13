@@ -249,6 +249,15 @@ export interface DecisionRecord extends DecisionPayload {
   // once the chain is chosen (AGENTS.md §4.2, Phase 2).
 }
 
+/** Result of ChainAdapter.verifyDecision — proof a tx matches a decision. */
+export interface VerifiedDecision {
+  txHash: string;
+  /** Address that sent the transaction (the signer). */
+  sender: string;
+  /** Block number as a decimal string. */
+  blockNumber: string;
+}
+
 // ---------------------------------------------------------------------------
 // Chain / Wallet Types (§4.1)
 // ---------------------------------------------------------------------------

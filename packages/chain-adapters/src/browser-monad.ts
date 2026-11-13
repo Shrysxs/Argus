@@ -4,23 +4,35 @@ import type {
   LogFilter,
   WalletSession,
 } from "@argus/shared-types";
-import type { ChainAdapter } from "./index.js";
-import { encodeFunctionData, parseAbi } from "viem";
+import type { ChainAdapter } from "./index";
+import { encodeFunctionData } from "viem";
+import {
+  DEFAULT_MONAD_REGISTRY_ADDRESS,
+  MONAD_TESTNET_CHAIN_ID,
+  MONAD_TESTNET_EXPLORER_URL,
+  MONAD_TESTNET_HEX_CHAIN_ID,
+  MONAD_TESTNET_RPC_URL,
+  REGISTRY_ABI,
+  decisionArgs,
+  encodeDecision,
+  explorerTxUrl,
+} from "./registry";
 
-export const MONAD_TESTNET_CHAIN_ID = 10143;
-export const MONAD_TESTNET_HEX_CHAIN_ID = "0x279f";
-export const DEFAULT_MONAD_REGISTRY_ADDRESS =
-  "0x1001b9A1c69E513F7D463e3578bDeE7B94295919";
+export {
+  DEFAULT_MONAD_REGISTRY_ADDRESS,
+  MONAD_TESTNET_CHAIN_ID,
+  MONAD_TESTNET_EXPLORER_URL,
+  MONAD_TESTNET_HEX_CHAIN_ID,
+  explorerTxUrl,
+};
+
+const RECEIPT_TIMEOUT_MS = 60_000;
 
 export interface BrowserMonadConfig {
   registryAddress?: string;
   rpcUrl?: string;
   ethereumProvider?: any;
 }
-
-const REGISTRY_ABI = parseAbi([
-  "function recordDecision(string asset, string decision, uint256 confidence, bytes32 dataSnapshotHash, bytes32 promptVersionHash, uint256 timestamp) external",
-]);
 
 export class BrowserMonadChainAdapter implements ChainAdapter {
   readonly chainId = MONAD_TESTNET_CHAIN_ID;
@@ -47,71 +59,6 @@ export class BrowserMonadChainAdapter implements ChainAdapter {
     );
   }
 
-  private formatBytes32(hash: string | undefined, name: string): string {
-    if (!hash) {
-      throw new Error(`Invalid payload: ${name} is required`);
-    }
-    let clean = hash.trim();
-    if (!clean.startsWith("0x")) {
-      clean = `0x${clean}`;
-    }
-    if (!/^0x[0-9a-fA-F]{64}$/.test(clean)) {
-      throw new Error(`Invalid bytes32 hash string for ${name}: ${hash}`);
-    }
-    return clean;
-  }
-
-  private validatePayload(input: DecisionPayload): {
-    asset: string;
-    decision: string;
-    confidenceBps: bigint;
-    dataSnapshotHash: `0x${string}`;
-    promptVersionHash: `0x${string}`;
-    timestampSec: bigint;
-  } {
-    const asset = input.asset?.trim()?.toUpperCase();
-    if (!asset) {
-      throw new Error("Invalid payload: asset must not be empty");
-    }
-
-    const decision = input.consensus?.recommendation;
-    if (!decision || !["BUY", "SELL", "HOLD"].includes(decision)) {
-      throw new Error("Invalid payload: recommendation must be BUY, SELL, or HOLD");
-    }
-
-    const rawConf = input.consensus?.confidence;
-    if (typeof rawConf !== "number" || isNaN(rawConf) || rawConf < 0 || rawConf > 100) {
-      throw new Error("Invalid payload: confidence must be a number between 0 and 100");
-    }
-
-    const confidenceBps = BigInt(Math.round(rawConf * 100));
-    if (confidenceBps < 0n || confidenceBps > 10000n) {
-      throw new Error("Invalid payload: confidence in basis points must be 0..10000");
-    }
-
-    const dataSnapshotHash = this.formatBytes32(
-      input.dataSnapshotHash,
-      "dataSnapshotHash"
-    ) as `0x${string}`;
-
-    const promptVersionHash = this.formatBytes32(
-      input.promptVersionHash || input.reasoningHash,
-      "promptVersionHash/reasoningHash"
-    ) as `0x${string}`;
-
-    const tsMs = typeof input.timestamp === "number" ? input.timestamp : Date.now();
-    const timestampSec = BigInt(Math.floor(tsMs > 1e11 ? tsMs / 1000 : tsMs));
-
-    return {
-      asset,
-      decision,
-      confidenceBps,
-      dataSnapshotHash,
-      promptVersionHash,
-      timestampSec,
-    };
-  }
-
   async switchNetwork(): Promise<void> {
     const provider = this.getProvider();
     try {
@@ -130,8 +77,8 @@ export class BrowserMonadChainAdapter implements ChainAdapter {
                 chainId: MONAD_TESTNET_HEX_CHAIN_ID,
                 chainName: "Monad Testnet",
                 nativeCurrency: { name: "MON", symbol: "MON", decimals: 18 },
-                rpcUrls: ["https://testnet-rpc.monad.xyz"],
-                blockExplorerUrls: ["https://testnet.monadexplorer.com"],
+                rpcUrls: [MONAD_TESTNET_RPC_URL],
+                blockExplorerUrls: [MONAD_TESTNET_EXPLORER_URL],
               },
             ],
           });
@@ -186,7 +133,7 @@ export class BrowserMonadChainAdapter implements ChainAdapter {
   }
 
   async recordDecision(input: DecisionPayload): Promise<{ txHash: string }> {
-    const validated = this.validatePayload(input);
+    const encoded = encodeDecision(input);
     const provider = this.getProvider();
 
     // Check chain ID before tx
@@ -209,14 +156,7 @@ export class BrowserMonadChainAdapter implements ChainAdapter {
     const calldata = encodeFunctionData({
       abi: REGISTRY_ABI,
       functionName: "recordDecision",
-      args: [
-        validated.asset,
-        validated.decision,
-        validated.confidenceBps,
-        validated.dataSnapshotHash,
-        validated.promptVersionHash,
-        validated.timestampSec,
-      ],
+      args: decisionArgs(encoded),
     });
 
     try {
@@ -235,8 +175,10 @@ export class BrowserMonadChainAdapter implements ChainAdapter {
         throw new Error(`Invalid transaction hash returned from wallet: ${txHash}`);
       }
 
+      await this.waitForReceipt(provider, txHash);
       return { txHash };
     } catch (err: any) {
+      if (err?.message?.startsWith("Transaction ")) throw err;
       if (err?.code === 4001 || err?.message?.includes("user rejected") || err?.message?.includes("User denied")) {
         throw new Error("Transaction signature rejected by user.");
       }
@@ -249,6 +191,24 @@ export class BrowserMonadChainAdapter implements ChainAdapter {
       }
       throw new Error(`Client-signed transaction failed: ${err?.message || String(err)}`);
     }
+  }
+
+  /** Wait until the wallet's RPC reports the tx mined; throw if it reverted. */
+  private async waitForReceipt(provider: any, txHash: string): Promise<void> {
+    const deadline = Date.now() + RECEIPT_TIMEOUT_MS;
+    while (Date.now() < deadline) {
+      const receipt = await provider.request({ method: "eth_getTransactionReceipt", params: [txHash] }).catch(() => null);
+      if (receipt) {
+        if (receipt.status !== "0x1") throw new Error(`Transaction reverted: ${explorerTxUrl(txHash)}`);
+        return;
+      }
+      await new Promise((r) => setTimeout(r, 1500));
+    }
+    throw new Error(`Transaction not confirmed within ${RECEIPT_TIMEOUT_MS / 1000}s: ${explorerTxUrl(txHash)}`);
+  }
+
+  async verifyDecision(): Promise<never> {
+    throw new Error("verifyDecision runs server-side via MonadChainAdapter");
   }
 
   async getDecisionLogs(_filter?: LogFilter): Promise<DecisionRecord[]> {

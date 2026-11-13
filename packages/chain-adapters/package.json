@@ -11,7 +11,8 @@
   },
   "scripts": {
     "typecheck": "tsc --noEmit",
-    "lint": "echo 'no lint configured yet'"
+    "lint": "echo 'no lint configured yet'",
+    "test": "node --import tsx/esm --test src/*.test.ts"
   },
   "dependencies": {
     "@argus/shared-types": "*",
@@ -19,6 +20,7 @@
   },
   "devDependencies": {
     "@workspace/typescript-config": "*",
-    "typescript": "^5"
+    "typescript": "^5",
+    "tsx": "^4"
   }
 }
