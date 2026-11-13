@@ -94,7 +94,7 @@ npx prisma migrate resolve --applied 0_init
 npx prisma migrate deploy
 ```
 
-On Vercel, `apps/web` uses the `vercel-build` script, which runs `prisma migrate deploy` before `next build`. Until the
+On Vercel, `apps/web` uses the `vercel-build` script, which runs `prisma migrate deploy` before `next build` for **production** deployments only (previews never migrate). Until the
 baseline above has been done, that build fails on purpose and Vercel keeps serving the previous deployment — it never
 ships code against an un-migrated database.
 
