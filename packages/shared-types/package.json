@@ -11,6 +11,6 @@
   },
   "devDependencies": {
     "@workspace/typescript-config": "*",
-    "typescript": "^5"
+    "typescript": "^7"
   }
 }

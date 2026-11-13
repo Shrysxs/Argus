@@ -16,6 +16,6 @@
   "devDependencies": {
     "@workspace/typescript-config": "*",
     "tsx": "^4",
-    "typescript": "^5"
+    "typescript": "^7"
   }
 }
