@@ -1,169 +1,160 @@
 # Argus
 
-Argus is an on-chain quantitative decision platform. It runs five analytical frameworks on market data snapshots, calculates a confidence-weighted consensus, and records decisions and data hashes on Monad testnet.
+**An AI investment committee you can audit.** Five independent LLM analysts — value, momentum, macro, on-chain and
+risk — vote on a crypto asset from the same hashed market snapshot. Their votes are combined by a published formula,
+and the decision, the data hash and the prompt hash are sealed on-chain. Every sealed decision gets a public page
+that anyone can **re-verify in their browser**, and every analyst's track record is **scored against what the market
+actually did**.
+
+[![CI](https://github.com/Shrysxs/Argus/actions/workflows/ci.yml/badge.svg)](https://github.com/Shrysxs/Argus/actions/workflows/ci.yml)
+· **Live:** [argus-web-beta.vercel.app](https://argus-web-beta.vercel.app) · Monad testnet · MIT
+
+> Argus is a research and decision-support tool, not financial advice. See the [risk disclaimer](apps/web/app/legal/disclaimer/page.tsx).
 
 ---
 
-## Live Demo
+## What makes it different
 
-**Web Application:** [https://argus-web-beta.vercel.app/signup](https://argus-web-beta.vercel.app/signup)
+| | Typical "AI trading signal" | Argus |
+|---|---|---|
+| Who decides | One model, one prompt | Five analysts with distinct, versioned frameworks |
+| Inputs | Unstated | One snapshot (price, ~210d technicals, sentiment), hashed and published |
+| Bad model output | Patched or hidden | Rejected, retried once, then shown as a failure with the raw response kept |
+| Missing data | Model guesses | Analyst abstains and says why |
+| Proof | Screenshot | On-chain event + in-browser re-verification of every hash |
+| Track record | Marketing | Each decision scored after 7 days; public leaderboard with Brier scores |
 
-Users can sign up, analyze supported assets (BTC, ETH, SOL, LINK, DOGE), view framework reasoning and citations, check consensus results, and seal decisions on Monad testnet.
+## Product tour
 
----
+- **Workbench** (`/syndicate`) — pick from 100+ assets, run the committee and watch votes stream in over SSE, see
+  quorum/split/degraded states, then seal with your own wallet or the Argus relayer.
+- **Decision page** (`/d/:id`) — votes, reasoning, cited data, the raw snapshot, hashes, on-chain record, realized
+  outcome, and a *Verify independently* button.
+- **Public ledger** (`/decisions`) and **leaderboard** (`/leaderboard`).
+- **Account** — credit balance, an append-only credit ledger, password change, sign-out-everywhere.
+- **Methodology** (`/methodology`) — every formula and hash definition, written to match the code.
 
-## Features
+## Architecture
 
-- **5 Analytical Frameworks:** Evaluates assets across Value, Momentum, Macro, On-chain, and Risk models in parallel.
-- **Deterministic Consensus:** Pure math engine aggregating confidence-weighted votes and tracking outcome distribution.
-- **Cryptographic Audit Trail:** SHA-256 hashing for market snapshots, prompt versions, and output reasoning.
-- **On-Chain Recording:** Anchors decision payloads to the Monad testnet registry contract (`DecisionRegistry.sol`).
-- **Entropy-Based Pricing:** Signals are priced using Shannon entropy of the vote distribution and asset volatility.
-- **Atomic Credit Billing:** PostgreSQL row-level locks prevent race conditions and balance overdrafts.
-- **Provider Routing:** Supports Groq, OpenRouter, Google Gemini, and OpenAI with JSON schema validation.
+```mermaid
+flowchart LR
+  UI[Next.js app<br/>apps/web] -->|SSE| API[/api/analyze/]
+  API --> DL[data-layer<br/>snapshot + indicators + sha256]
+  API --> AG[agents<br/>5 versioned prompts,<br/>schema-validated, failover]
+  AG --> LLM[(Groq / OpenRouter /<br/>Gemini / OpenAI)]
+  API --> CE[consensus<br/>pure, tested math]
+  API --> DB[(Postgres<br/>snapshots, votes, raw responses,<br/>outcomes, credit ledger)]
+  UI -->|seal| REC[/api/record/]
+  REC --> CA[chain-adapters<br/>viem]
+  CA --> REG[[ArgusRegistry<br/>Monad testnet]]
+  CRON[Vercel Cron] --> SC[/api/cron/score-outcomes/] --> DB
+  V[Browser verifier] -.public RPC.-> REG
+```
 
----
+Design rules (enforced by structure, documented in [`AGENTS.md`](AGENTS.md)):
 
-## Analytical Frameworks
+- Business logic never imports a chain SDK — everything on-chain goes through `ChainAdapter`.
+- The consensus engine is pure: data in, decision out, no I/O, fully unit tested.
+- Prompts are files, versioned, never edited in place; their SHA-256 is committed per vote.
+- Fail loud: failures and abstentions are shown and stored, never silently dropped or replaced.
+- The registry contract stores nothing, holds no funds and has no admin.
 
-Prompts are stored as versioned markdown files in `packages/agents/prompts/`.
-
-| ID | Framework | Focus | Default Model |
-|---|---|---|---|
-| `value-hunter` | Graham margin of safety, Damodaran DCF, Buffett moat | Fundamental value, multiples | `openai/gpt-oss-20b` (Groq) |
-| `momentum-trader` | RSI, MACD, EMA, VWAP, volume breakouts | Trend confirmation, velocity | `openai/gpt-oss-20b` (Groq) |
-| `macro-analyst` | Global M2, Fed policy, DXY, correlation cycles | Macro regime and liquidity | `openai/gpt-oss-20b` (Groq) |
-| `onchain-sleuth` | MVRV, SOPR, exchange netflows, whale activity | Ledger flows, holder distribution | `openai/gpt-oss-20b` (Groq) |
-| `risk-guardian` | Market cycles, tail risk, Sharpe ratio, Kelly sizing | Downside protection, sizing | `openai/gpt-oss-20b` (Groq) |
-
-A single LLM API key (e.g. `GROQ_API_KEY`) runs all five evaluations in parallel.
-
----
-
-## Execution Pipeline
-
-1. **Data Snapshot:** Fetches price (CoinGecko) and sentiment (Fear & Greed Index) and generates a SHA-256 hash (`packages/data-layer`).
-2. **Parallel Evaluation:** Fans out five requests with structured JSON schemas (`packages/agents`).
-3. **Consensus Calculation:** Calculates weighted score:
-   $$\text{Weight}_d = \sum_{i : \text{vote}_i = d} \text{confidence}_i$$
-   $$\text{Confidence} = \frac{\text{Weight}_{\text{winner}}}{\sum_d \text{Weight}_d} \times 100$$
-4. **Entropy Pricing:** Signal cost scales with vote consensus and asset volatility:
-   $$H(p) = -\sum_d p_d \log_2 p_d \qquad I = \log_2(3) - H(p)$$
-5. **On-Chain Sealing:** Writes recommendation, confidence, snapshot hash, and prompt hash to the Monad registry contract via client wallet.
-
----
-
-## Repository Structure
+## How verification works
 
 ```text
-argus/
-├── apps/
-│   └── web/              # Next.js frontend, UI components, and API routes
-├── packages/
-│   ├── agents/           # Runner and versioned framework prompts
-│   ├── chain-adapters/   # ChainAdapter interface and Monad implementation
-│   ├── consensus/        # Consensus math and entropy pricing
-│   ├── data-layer/       # Market data fetchers and SHA-256 snapshot hasher
-│   ├── shared-types/     # Shared TypeScript definitions
-│   └── ui/               # Shared UI primitives
-├── contracts/            # Solidity registry contracts for Monad testnet
-└── README.md
+dataSnapshotHash  = sha256(canonical(snapshot.data))                 ← stored verbatim, re-hashable
+promptHash_i      = sha256(prompt file text)                         ← prompt texts served at /api/prompts
+promptVersionHash = sha256(canonical({v:1, prompts:[{agentId, promptVersion, promptHash}]}))
+reasoningHash     = sha256(canonical({v:1, snapshotHash, votes:[{agentId, vote, confidence, reasoning, dataPointsCited}]}))
+on-chain          = DecisionRecorded(asset, decision, confidenceBps, dataSnapshotHash, promptVersionHash, ts, sender)
 ```
 
----
+`canonical()` sorts object keys recursively. Client-signed seals are accepted only after the server decodes the
+transaction's event and matches every field against the stored analysis.
 
-## API Routes
+## Getting started
 
-| Route | Method | Description |
-|---|---|---|
-| `/api/analyze` | `POST` | Fetches snapshot, runs 5 frameworks, computes consensus. |
-| `/api/record` | `POST` | Records decision on Monad testnet registry contract. |
-| `/api/pricing/signal` | `POST` | Computes signal price and deducts balance via PostgreSQL row lock. |
-| `/api/billing/balance` | `GET` | Returns user's credit balance. |
-| `/api/billing/topup` | `POST` | Admin grant route (requires `isAdmin: true`). |
-| `/api/history` | `GET` | Returns user's past analyses. |
-| `/api/auth/signup` | `POST` | Registers a new account ($25.00 default credit). |
-| `/api/auth/login` | `POST` | Authenticates user and sets session cookie. |
-| `/api/auth/me` | `GET` | Returns current user profile. |
-| `/api/health` | `GET` | Service health check. |
-
----
-
-## Tech Stack
-
-- **Frontend:** Next.js (App Router), React 19, Tailwind CSS v4
-- **Backend & Storage:** Next.js API Routes, Prisma ORM, Supabase (PostgreSQL)
-- **Chain:** Solidity, Monad Testnet (`https://testnet-rpc.monad.xyz`)
-- **LLM Providers:** Groq, OpenRouter, Google Gemini, OpenAI
-- **Tooling:** Turborepo, npm workspaces, TypeScript
-
----
-
-## Environment Setup
-
-### 1. Configure Environment Variables
-Copy `.env.example` to `.env`:
+Requirements: Node 22+, Postgres 14+, and at least one LLM API key (Groq has a free tier).
 
 ```bash
-cp .env.example .env
-```
-
-Variables:
-
-```env
-# Monad Testnet Configuration
-MONAD_TESTNET_RPC_URL="https://testnet-rpc.monad.xyz"
-MONAD_TESTNET_DEPLOYER_ADDRESS=""
-MONAD_REGISTRY_ADDRESS="0x..."
-
-# Database & Supabase Configuration
-DATABASE_URL="postgresql://user:password@localhost:5432/argus"
-DIRECT_URL="postgresql://user:password@localhost:5432/argus"
-NEXT_PUBLIC_SUPABASE_URL="https://your-supabase-project.supabase.co"
-NEXT_PUBLIC_SUPABASE_ANON_KEY="your-anon-key"
-SUPABASE_URL="https://your-supabase-project.supabase.co"
-SUPABASE_ANON_KEY="your-anon-key"
-
-# LLM Provider Keys (At least one required)
-GROQ_API_KEY=""         # Free tier at console.groq.com/keys
-OPENROUTER_API_KEY=""   # Free tier at openrouter.ai/keys
-GEMINI_API_KEY=""       # Free tier at aistudio.google.com/app/apikey
-OPENAI_API_KEY=""
-
-# Web App Configuration
-NEXT_PUBLIC_APP_URL="http://localhost:3000"
-COOKIE_SECURE="false"   # Set to "true" in HTTPS production
-```
-
-### 2. Install & Run Locally
-
-```bash
-# Install dependencies
 npm install
-
-# Generate Prisma client
-npm run postinstall
-
-# Start development server
-npm run dev
+cp apps/web/.env.example apps/web/.env      # fill in DATABASE_URL, DIRECT_URL and an LLM key
+cd apps/web
+npx prisma migrate deploy                   # create the schema
+npm run dev                                 # http://localhost:3000
 ```
 
-App runs at [http://localhost:3000](http://localhost:3000).
+### Upgrading an existing database (one-time)
 
----
+Databases created before migrations existed (via `prisma db push`) must be baselined once:
+
+```bash
+cd apps/web
+npx prisma migrate resolve --applied 0_init
+npx prisma migrate deploy
+```
+
+Note: migration `6_hashed_session_tokens` signs everyone out once, and `5_credits_cents_ledger` converts balances to
+integer cents with an opening-balance ledger entry per user.
+
+### Production checklist
+
+| Variable | Why |
+|---|---|
+| `COINGECKO_API_KEY` | keyless CoinGecko is rate limited from cloud IPs |
+| `UPSTASH_REDIS_REST_URL` / `_TOKEN` | rate limits shared across serverless instances |
+| `CRON_SECRET` | authenticates the daily outcome-scoring cron (`apps/web/vercel.json`) |
+| `MONAD_SIGNER_PRIVATE_KEY` | enables relayer seals (testnet only — use a KMS/relayer for mainnet) |
+| `NEXT_PUBLIC_APP_URL`, `COOKIE_SECURE=true` | canonical URLs and secure cookies |
+
+See [`apps/web/.env.example`](apps/web/.env.example) for everything else.
+
+## Testing
+
+```bash
+npx turbo typecheck lint
+npx turbo test --filter=@argus/*            # pure package tests (no network)
+cd apps/web && npm test                     # integration tests — needs DATABASE_URL
+cd contracts && forge test
+```
+
+CI runs all of the above against a real Postgres service, checks the Prisma schema has no drift from the
+migrations, builds the app, and runs Foundry fmt/build/test.
+
+## Public API
+
+| Endpoint | Description |
+|---|---|
+| `GET /api/decisions?asset=BTC&page=1` | Sealed decisions feed |
+| `GET /api/decisions/:id` | Full record: votes, reasoning, canonical snapshot, hashes, seal payload |
+| `GET /api/prompts?ref=momentum-trader/v3` | Exact prompt text (to recompute `promptHash`) |
+| `GET /api/pricing/signal?id=:id` | Entropy-based information value quote (MATH.md §3) |
+| `GET /api/health` | Liveness / database readiness |
+
+Authenticated: `POST /api/analyze` (JSON or `Accept: text/event-stream`), `POST /api/record`, `/api/history`,
+`/api/billing/*`, `/api/account/*`.
+
+## Repository layout
+
+```text
+apps/web/               Next.js 16 app (App Router), API routes, Prisma schema + migrations
+packages/agents/        roster, versioned prompts (bundled at build), runner, output validation, providers
+packages/consensus/     consensus, outcome scoring, reputation, entropy pricing (pure math)
+packages/data-layer/    market data fetchers + fallbacks, indicators, canonical hashing
+packages/chain-adapters ChainAdapter, viem Monad adapter, browser adapter, tx verification
+packages/shared-types/  cross-package contracts
+packages/ui/            design tokens and primitives
+contracts/              ArgusRegistry (Foundry)
+```
+
+Deeper docs: [`AGENTS.md`](AGENTS.md) (architecture constitution) · [`MATH.md`](MATH.md) · [`SYNDICATE.md`](SYNDICATE.md) ·
+[`DATA.md`](DATA.md) · [`ONCHAIN.md`](ONCHAIN.md) · [`packages/ROADMAP.md`](packages/ROADMAP.md) ·
+[`docs/agent-prompt-changelog.md`](docs/agent-prompt-changelog.md)
 
 ## Origin
 
-Argus originated as the Penguin Protocol prototype built during the Monad Blitz Pune hackathon.
+Argus started as *Penguin Protocol* at Monad Blitz Pune and has since been rebuilt for production use.
 
----
+## License
 
-## Disclaimer
-
-Argus is an experimental decision-support tool for research purposes only. It does not provide financial or investment advice, custody funds, or execute trades.
-
----
-
-## Contact
-
-Maintained by **Shreyas** ([GitHub](https://github.com/shrysxs)).
+[MIT](LICENSE)

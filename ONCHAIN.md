@@ -26,7 +26,7 @@ Implemented once, for Monad, in `packages/chain-adapters`. Types come from `pack
 
 ## 2. Registry Contract
 
-Minimal, record-only, never custodies funds (`AGENT.md` §9). Extends the hackathon `PenguinRegistry.sol` pattern:
+Minimal, record-only, never custodies funds (`AGENT.md` §9). Implemented as `contracts/src/ArgusRegistry.sol` (formerly the hackathon `PenguinRegistry.sol`, same ABI):
 
 ```solidity
 event DecisionRecorded(

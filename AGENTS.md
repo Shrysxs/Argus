@@ -8,8 +8,8 @@ This file is written to be read by both humans (you, contributors) and coding ag
 
 ## 0. Status
 
-- **Stage:** Post-hackathon → pre-production planning
-- **Chain:** Not yet decided (see [Section 4](#4-chain-selection--the-abstraction-strategy))
+- **Stage:** Public beta on Monad testnet (see `packages/ROADMAP.md`)
+- **Chain:** Monad testnet behind the `ChainAdapter` interface (see [Section 4](#4-chain-selection--the-abstraction-strategy))
 - **Prior art:** Penguin Protocol (Monad Blitz Pune MVP) — no auth, no DB, no real portfolio/trading, single Monad-only registry contract, 5 hardcoded agents, CoinGecko + Fear & Greed data.
 - **Goal of this doc:** Turn that scoped hackathon demo into an architecture that can survive real users, real money-adjacent decisions, and a chain choice made later without a rewrite.
 
@@ -101,6 +101,9 @@ interface ChainAdapter {
   chainId: number | string;
   recordDecision(input: DecisionPayload): Promise<{ txHash: string }>;
   getDecisionLogs(filter?: LogFilter): Promise<DecisionRecord[]>;
+  // Prove a tx (e.g. user-signed) emitted a DecisionRecorded event matching
+  // `expected` field-for-field. Never trust a client-supplied tx hash without it.
+  verifyDecision(txHash: string, expected: DecisionPayload): Promise<VerifiedDecision>;
   getWalletBalance(address: string): Promise<bigint>;
   connectWallet(): Promise<WalletSession>;
   estimateFee(input: DecisionPayload): Promise<bigint>;
