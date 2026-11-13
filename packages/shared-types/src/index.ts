@@ -125,6 +125,9 @@ export interface AgentPersona {
    */
   dataDependencies: string[];
 
+  /** Snapshot keys this agent uses when present but can work without. */
+  optionalDataDependencies?: string[];
+
   /**
    * Preferred LLM model identifier (§5.2).
    * Some agents may benefit from models better at quantitative reasoning.
@@ -193,6 +196,13 @@ export interface MarketDataSnapshot {
    * E.g., ["coingecko", "alternative.me/fear-and-greed"].
    */
   sources: string[];
+
+  /**
+   * Data classes that could not be fetched, with the reason. Not part of the
+   * hash (it describes absence, not data). Agents requiring a key listed here
+   * abstain rather than guess.
+   */
+  unavailable?: Record<string, string>;
 }
 
 // ---------------------------------------------------------------------------

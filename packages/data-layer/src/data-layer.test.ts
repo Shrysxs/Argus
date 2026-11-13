@@ -7,7 +7,7 @@ import { fetchSentiment } from "./fetchers/sentiment";
 import { fetchSentimentFallback } from "./fetchers/sentiment-fallback";
 import { fetchOnchainMetrics } from "./fetchers/onchain-metrics";
 import { resolveCoinId, getCoinUniverse, clearUniverseCache, STATIC_COINS_LIST } from "./fetchers/coins";
-import { fetchSnapshot, snapshotCache } from "./snapshot";
+import { fetchSnapshot, snapshotCache, historyCache } from "./snapshot";
 import { sha256 } from "./hash";
 import { TtlCache } from "./cache";
 import { DataFetchError, NotImplementedError } from "./errors";
@@ -246,17 +246,6 @@ describe("stub fetchers", () => {
     );
   });
 
-  it("fetchPriceFallback throws NotImplementedError", async () => {
-    await assert.rejects(
-      () => fetchPriceFallback("bitcoin"),
-      (err: unknown) => {
-        assert.ok(err instanceof NotImplementedError);
-        assert.equal(err.source, "price-fallback");
-        return true;
-      },
-    );
-  });
-
   it("fetchSentimentFallback throws NotImplementedError", async () => {
     await assert.rejects(
       () => fetchSentimentFallback(),
@@ -319,5 +308,92 @@ describe("fetchSnapshot", () => {
     // onchainMetrics should not be in data since it's NotImplemented
     assert.equal((snapshot.data as Record<string, unknown>).onchainMetrics, undefined);
     assert.ok(!snapshot.sources.includes("onchain-metrics"));
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Fallbacks, history and technicals
+// ---------------------------------------------------------------------------
+
+const CLOSES = Array.from({ length: 211 }, (_, i) => 50_000 + i * 100);
+
+function routedFetch(routes: Record<string, unknown>): typeof fetch {
+  return ((url: string | URL | Request) => {
+    const u = url.toString();
+    for (const [needle, body] of Object.entries(routes)) {
+      if (u.includes(needle)) {
+        if (body instanceof Error) return Promise.reject(body);
+        return mockFetch(body)(url);
+      }
+    }
+    return Promise.reject(new Error(`unrouted ${u}`));
+  }) as typeof fetch;
+}
+
+describe("fetchPriceFallback (CryptoCompare)", () => {
+  it("maps pricemultifull to PriceData", async () => {
+    const p = await fetchPriceFallback(
+      "BTC",
+      routedFetch({
+        "coins/list": [],
+        pricemultifull: { RAW: { BTC: { USD: { PRICE: 64000, MKTCAP: 1.2e12, TOTALVOLUME24HTO: 3e10, CHANGEPCT24HOUR: -1.5 } } } },
+      }),
+    );
+    assert.equal(p.priceUsd, 64000);
+    assert.equal(p.priceChangePercent24h, -1.5);
+  });
+
+  it("throws DataFetchError on an error envelope", async () => {
+    await assert.rejects(
+      () => fetchPriceFallback("BTC", routedFetch({ "coins/list": [], pricemultifull: { Response: "Error", Message: "rate limit" } })),
+      /rate limit/,
+    );
+  });
+});
+
+describe("fetchSnapshot with history", () => {
+  beforeEach(() => {
+    snapshotCache.delete("BTC");
+    historyCache.delete("BTC");
+    clearUniverseCache();
+  });
+
+  it("includes technicals computed from daily history, anchored on the live price", async () => {
+    const snap = await fetchSnapshot(
+      "BTC",
+      routedFetch({
+        "coins/list": [],
+        "simple/price": MOCK_PRICE_RESPONSE,
+        market_chart: { prices: CLOSES.map((c, i) => [i * 86400000, c]), total_volumes: CLOSES.map((_, i) => [i * 86400000, 1e9]) },
+        "alternative.me": MOCK_FNG_RESPONSE,
+      }),
+    );
+    const t = (snap.data as any).technicals;
+    assert.equal(t.lastClose, 65000);
+    assert.equal(t.lookbackDays, 211);
+    assert.ok(t.ema200 !== null);
+    assert.equal(t.source, "coingecko/market_chart");
+    assert.ok(snap.sources.includes("coingecko/market_chart"));
+    assert.equal(snap.unavailable?.onchainMetrics, "no on-chain metrics provider configured");
+    assert.equal(snap.unavailable?.technicals, undefined);
+  });
+
+  it("falls back to CryptoCompare for price, records missing history and sentiment", async () => {
+    const snap = await fetchSnapshot(
+      "BTC",
+      routedFetch({
+        "coins/list": [],
+        "simple/price": new Error("cg down"),
+        market_chart: new Error("cg down"),
+        histoday: { Response: "Error", Message: "histoday limit" },
+        pricemultifull: { RAW: { BTC: { USD: { PRICE: 63000 } } } },
+        "alternative.me": new Error("fng down"),
+      }),
+    );
+    assert.equal((snap.data as any).price.priceUsd, 63000);
+    assert.deepEqual(snap.sources, ["cryptocompare"]);
+    assert.match(snap.unavailable!.technicals!, /both failed/);
+    assert.ok(snap.unavailable!.sentiment);
+    assert.equal((snap.data as any).technicals, undefined);
   });
 });

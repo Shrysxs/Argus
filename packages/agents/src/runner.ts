@@ -40,6 +40,21 @@ export function temperatureFor(persona: AgentPersona): number {
   return persona.id === "momentum-trader" || persona.id === "risk-guardian" ? 0.2 : 0.4;
 }
 
+/** Snapshot keys a persona requires that are absent from the snapshot. */
+export function missingDependencies(persona: AgentPersona, snapshot: MarketDataSnapshot): string[] {
+  return persona.dataDependencies.filter((key) => snapshot.data[key] === undefined || snapshot.data[key] === null);
+}
+
+/** Only the snapshot keys this persona declares (required + optional), so agents can't cite data outside their mandate. */
+export function scopeSnapshotData(persona: AgentPersona, snapshot: MarketDataSnapshot): Record<string, unknown> {
+  const keys = [...persona.dataDependencies, ...(persona.optionalDataDependencies ?? [])];
+  const out: Record<string, unknown> = {};
+  for (const key of keys) {
+    if (snapshot.data[key] !== undefined && snapshot.data[key] !== null) out[key] = snapshot.data[key];
+  }
+  return out;
+}
+
 export interface RunAgentOptions {
   /** Force a single API key; provider is inferred from its prefix. */
   apiKey?: string;
@@ -50,7 +65,7 @@ export interface RunAgentOptions {
   fetchFn?: typeof fetch;
   /** Test seam. Returning null is treated as a failed agent. */
   mockFn?: (persona: AgentPersona, snapshot: MarketDataSnapshot) => Promise<AgentVote | null>;
-  /** Snapshot data scoped to this agent's dependencies. Defaults to the full snapshot data. */
+  /** Override how snapshot data is scoped per agent. Defaults to scopeSnapshotData. */
   scopedData?: (persona: AgentPersona, snapshot: MarketDataSnapshot) => Record<string, unknown>;
 }
 
@@ -140,6 +155,12 @@ export async function runAgentDetailed(
       : { agentId: persona.id, status: "failed", vote: null, error: "Agent returned no vote", attempts: [] };
   }
 
+  const missing = missingDependencies(persona, snapshot);
+  if (missing.length > 0) {
+    const why = missing.map((k) => (snapshot.unavailable?.[k] ? `${k} (${snapshot.unavailable[k]})` : k)).join(", ");
+    return { agentId: persona.id, status: "abstained", vote: null, error: `Required data unavailable: ${why}`, attempts: [] };
+  }
+
   const providers = options.providers ?? resolveProviders({ apiKey: options.apiKey });
   if (providers.length === 0) {
     return {
@@ -154,7 +175,7 @@ export async function runAgentDetailed(
   const promptText = getPromptText(persona);
   const promptHash = hashPrompt(promptText);
   const temperature = temperatureFor(persona);
-  const data = options.scopedData ? options.scopedData(persona, snapshot) : snapshot.data;
+  const data = (options.scopedData ?? scopeSnapshotData)(persona, snapshot);
   const baseMessages = buildMessages(persona, snapshot, data);
   const fetchImpl = options.fetchFn ?? fetch;
   const attempts: AgentAttempt[] = [];

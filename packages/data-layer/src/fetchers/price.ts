@@ -1,5 +1,6 @@
 import { DataFetchError } from "../errors";
 import { getCoinUniverse, resolveCoinId } from "./coins";
+import { coingeckoRequest } from "./coingecko";
 
 export interface PriceData {
   asset: string;
@@ -10,9 +11,8 @@ export interface PriceData {
   fetchedAt: number;
 }
 
-// CoinGecko's free /simple/price endpoint. The asset id must be the CoinGecko
-// coin id (e.g. "bitcoin", "ethereum"), not the ticker symbol.
-const COINGECKO_URL = "https://api.coingecko.com/api/v3/simple/price";
+// CoinGecko /simple/price. The asset id must be the CoinGecko coin id
+// (e.g. "bitcoin", "ethereum"), not the ticker symbol.
 
 export async function fetchPrice(
   coinId: string,
@@ -31,7 +31,8 @@ export async function fetchPrice(
 
   let res: Response;
   try {
-    res = await fetchFn(`${COINGECKO_URL}?${params}`);
+    const { url, init } = coingeckoRequest("/simple/price", params);
+    res = await fetchFn(url, init);
   } catch (err) {
     throw new DataFetchError("coingecko", "network request failed", err);
   }

@@ -57,9 +57,10 @@ describe("runAnalysis persistence", () => {
   });
 
   test("classifies quorum", () => {
-    assert.equal(classifyRun(5, 5), "complete");
-    assert.equal(classifyRun(3, 5), "degraded");
-    assert.equal(classifyRun(2, 5), "no_quorum");
+    assert.equal(classifyRun(5, 0), "complete");
+    assert.equal(classifyRun(4, 0), "complete"); // one abstained
+    assert.equal(classifyRun(3, 1), "degraded");
+    assert.equal(classifyRun(2, 0), "no_quorum");
   });
 
   test("persists snapshot, every agent outcome and raw attempts", async () => {

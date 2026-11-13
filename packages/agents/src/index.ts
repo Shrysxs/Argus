@@ -18,6 +18,8 @@ export {
   getPromptText,
   promptVersionOf,
   hashPrompt,
+  missingDependencies,
+  scopeSnapshotData,
 } from "./runner";
 export type { RunAgentOptions, RunSyndicateOptions } from "./runner";
 export { validateAgentOutput } from "./validate";

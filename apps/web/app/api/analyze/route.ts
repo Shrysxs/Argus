@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { getSessionUser } from "@/lib/auth/session";
 import { checkRateLimit, recordFailedAttempt } from "@/lib/auth/rate-limit";
-import { DataFetchError } from "@argus/data-layer";
+import { DataFetchError, UnsupportedAssetError } from "@argus/data-layer";
 import { runAnalysis, MIN_RESPONSIVE_AGENTS } from "@/lib/analysis/run-analysis";
 
 export { MIN_RESPONSIVE_AGENTS };
@@ -34,6 +34,9 @@ export async function POST(req: Request) {
     return NextResponse.json(result);
   } catch (err: unknown) {
     console.error("API /api/analyze execution error:", err);
+    if (err instanceof UnsupportedAssetError) {
+      return NextResponse.json({ error: `Unsupported asset "${asset}"` }, { status: 400 });
+    }
     if (err instanceof DataFetchError) {
       return NextResponse.json({ error: `Market data unavailable: ${err.message}` }, { status: 502 });
     }

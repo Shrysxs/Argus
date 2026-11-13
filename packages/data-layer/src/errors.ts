@@ -18,3 +18,11 @@ export class NotImplementedError extends DataFetchError {
     this.name = "NotImplementedError";
   }
 }
+
+/** The requested asset is not in the supported universe (a client error, not an outage). */
+export class UnsupportedAssetError extends DataFetchError {
+  constructor(source: string, reason: string) {
+    super(source, reason);
+    this.name = "UnsupportedAssetError";
+  }
+}

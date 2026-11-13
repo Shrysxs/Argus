@@ -152,3 +152,36 @@ describe("providers & prompts", () => {
     }
   });
 });
+
+describe("data dependencies", () => {
+  const onchain = AGENT_ROSTER.find((a) => a.id === "onchain-sleuth")!;
+  const value = AGENT_ROSTER.find((a) => a.id === "value-hunter")!;
+
+  test("agent abstains (no LLM call) when required data is missing, with the reason", async () => {
+    let called = false;
+    const fetchFn = (async () => {
+      called = true;
+      return chatResponse(goodJson);
+    }) as typeof fetch;
+    const r = await runAgentDetailed(
+      onchain,
+      { ...snapshot, unavailable: { onchainMetrics: "no on-chain metrics provider configured" } },
+      { providers: [provider("groq")], fetchFn },
+    );
+    assert.equal(r.status, "abstained");
+    assert.match(r.error!, /onchainMetrics \(no on-chain metrics provider configured\)/);
+    assert.equal(called, false);
+  });
+
+  test("agents only see the snapshot keys they declare", async () => {
+    let userMsg = "";
+    const fetchFn = (async (_u: unknown, init?: RequestInit) => {
+      userMsg = JSON.parse(String(init?.body)).messages[1].content;
+      return chatResponse(goodJson);
+    }) as typeof fetch;
+    const snap = { ...snapshot, data: { price: { priceUsd: 1 }, sentiment: { value: 50 }, onchainMetrics: { mvrv: 2 } } };
+    await runAgentDetailed(value, snap, { providers: [provider("groq")], fetchFn });
+    assert.match(userMsg, /"sentiment"/);
+    assert.doesNotMatch(userMsg, /onchainMetrics/);
+  });
+});

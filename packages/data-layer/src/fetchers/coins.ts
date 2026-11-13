@@ -1,5 +1,6 @@
-import { DataFetchError } from "../errors";
+import { DataFetchError, UnsupportedAssetError } from "../errors";
 import { TtlCache } from "../cache";
+import { coingeckoRequest } from "./coingecko";
 
 export interface CoinInfo {
   id: string;
@@ -111,7 +112,6 @@ export const STATIC_COINS_LIST: CoinInfo[] = [
   { id: "theta-fuel", symbol: "TFUEL", name: "Theta Fuel" },
 ];
 
-const COINGECKO_LIST_URL = "https://api.coingecko.com/api/v3/coins/list";
 const LIST_CACHE_TTL_MS = 24 * 60 * 60 * 1000; // 24 hours aggressive cache
 
 const universeCache = new TtlCache<CoinInfo[]>(LIST_CACHE_TTL_MS);
@@ -128,7 +128,8 @@ export async function getCoinUniverse(
   if (cached) return cached;
 
   try {
-    const res = await fetchFn(COINGECKO_LIST_URL);
+    const { url, init } = coingeckoRequest("/coins/list");
+    const res = await fetchFn(url, init);
     if (res.ok) {
       const rawList = (await res.json()) as Array<{
         id?: string;
@@ -204,8 +205,17 @@ export function resolveCoinId(
   }
 
   // If not found in universe, fail loud as required by DATA.md & requirement 1
-  throw new DataFetchError(
+  throw new UnsupportedAssetError(
     "coingecko",
     `unsupported asset ticker or coin id "${input}" — check the asset symbol or id is valid`
   );
+}
+
+/** Uppercase ticker for an input symbol or CoinGecko id (for non-CoinGecko providers). */
+export function resolveSymbol(input: string, universe: CoinInfo[] = STATIC_COINS_LIST): string {
+  const id = resolveCoinId(input, universe);
+  const clean = input.trim().toUpperCase();
+  const bySymbol = universe.find((c) => c.symbol === clean && c.id === id);
+  if (bySymbol) return bySymbol.symbol;
+  return universe.find((c) => c.id === id)?.symbol ?? clean;
 }

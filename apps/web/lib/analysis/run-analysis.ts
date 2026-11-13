@@ -17,9 +17,13 @@ export function toOutcome(r: AgentRunResult): AgentOutcome {
   return { agentId: r.agentId, status: r.status, vote: r.vote, error: r.error };
 }
 
-export function classifyRun(responsive: number, rosterSize: number): AnalysisStatus {
+/**
+ * Abstentions (required data unavailable) are a principled "no opinion" and
+ * do not degrade a run; provider/LLM failures do.
+ */
+export function classifyRun(responsive: number, failed: number): AnalysisStatus {
   if (responsive < MIN_RESPONSIVE_AGENTS) return "no_quorum";
-  return responsive === rosterSize ? "complete" : "degraded";
+  return failed === 0 ? "complete" : "degraded";
 }
 
 const EMPTY_BREAKDOWN: Record<VoteDirection, number> = { BUY: 0, SELL: 0, HOLD: 0 };
@@ -49,7 +53,8 @@ export async function runAnalysis({ userId, asset, onEvent, deps = {} }: RunAnal
 
   const votes: AgentVote[] = results.flatMap((r) => (r.vote ? [r.vote] : []));
   const rosterSize = AGENT_ROSTER.length;
-  const status = classifyRun(votes.length, rosterSize);
+  const failed = results.filter((r) => r.status === "failed").length;
+  const status = classifyRun(votes.length, failed);
 
   const consensus = votes.length > 0 ? computeConsensus(votes) : null;
   const breakdown = { ...EMPTY_BREAKDOWN, ...(consensus?.breakdown ?? {}) };
