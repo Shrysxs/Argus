@@ -85,7 +85,8 @@ export async function getSessionUser(reqOrSessionId?: Request | string) {
   return {
     id: session.user.id,
     email: session.user.email,
-    creditsUsd: session.user.creditsUsd,
+    creditsUsd: session.user.creditsCents / 100,
+    creditsCents: session.user.creditsCents,
     isAdmin: session.user.isAdmin,
     createdAt: session.user.createdAt,
   };
@@ -119,4 +120,12 @@ export async function destroySession(customSessionId?: string): Promise<void> {
   } catch {
     // Next.js cookies API unavailable
   }
+}
+
+/** Revoke every session for a user (e.g. "sign out everywhere", password change). */
+export async function destroyAllSessions(userId: string, exceptSessionId?: string): Promise<number> {
+  const { count } = await db.session.deleteMany({
+    where: { userId, ...(exceptSessionId ? { NOT: { id: exceptSessionId } } : {}) },
+  });
+  return count;
 }

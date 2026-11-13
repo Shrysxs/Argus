@@ -14,14 +14,16 @@ datasource db {
 }
 
 model User {
-  id             String          @id @default(uuid())
-  email          String          @unique
-  passwordHash   String          @map("password_hash")
-  creditsUsd     Float           @default(25.0) @map("credits_usd")
-  isAdmin        Boolean         @default(false) @map("is_admin")
-  createdAt      DateTime        @default(now()) @map("created_at")
+  id             String              @id @default(uuid())
+  email          String              @unique
+  passwordHash   String              @map("password_hash")
+  /// Balance in integer cents (never floats for money). DB CHECK keeps it >= 0.
+  creditsCents   Int                 @default(2500) @map("credits_cents")
+  isAdmin        Boolean             @default(false) @map("is_admin")
+  createdAt      DateTime            @default(now()) @map("created_at")
   sessions       Session[]
   analyzeResults AnalyzeResult[]
+  creditTxns     CreditTransaction[]
 
   // TODO: Link connected wallet address to user account (ONCHAIN.md §1)
 
@@ -134,4 +136,23 @@ model DecisionOutcome {
 
   @@index([scoredAt])
   @@map("decision_outcomes")
+}
+
+/// Append-only ledger: every balance change, with the balance after it.
+model CreditTransaction {
+  id                String   @id @default(uuid())
+  userId            String   @map("user_id")
+  user              User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  /// Signed amount in cents (negative = spend).
+  amountCents       Int      @map("amount_cents")
+  balanceAfterCents Int      @map("balance_after_cents")
+  /// signup_grant | analysis | refund | admin_grant | opening_balance
+  kind              String
+  /// e.g. the analysis id this charge/refund belongs to
+  reference         String?
+  note              String?
+  createdAt         DateTime @default(now()) @map("created_at")
+
+  @@index([userId, createdAt(sort: Desc)])
+  @@map("credit_transactions")
 }

@@ -79,54 +79,28 @@ describe("Entropy Pricing Pure Math Formula (MATH.md §3)", () => {
   });
 });
 
-import { POST as pricingHandler } from "../app/api/pricing/signal/route";
+import { GET as quoteHandler, POST as quotePostHandler } from "../app/api/pricing/signal/route";
+import { quoteSignal, volatilityMultiplier } from "../lib/signal-quote";
 
-describe("POST /api/pricing/signal Route Validation & Pure Math Computation", () => {
-  const mockConsensus: ConsensusResult = {
-    recommendation: "BUY",
-    confidence: 85.5,
-    breakdown: { BUY: 85.5, SELL: 0, HOLD: 14.5 },
-    disagreement: false,
-    agentVotes: [],
-  };
-
-  test("1. Unauthenticated request: returns 401 status", async () => {
-    const req = new Request("http://localhost:3000/api/pricing/signal", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ asset: "BTC", consensus: mockConsensus }),
-    });
-
-    const res = await pricingHandler(req);
-    assert.strictEqual(res.status, 401);
-    const body = await res.json();
-    assert.strictEqual(body.error, "Unauthorized");
+describe("Signal value quote (read-only, from stored decisions)", () => {
+  test("volatility multiplier comes from realized 30d vol, clamped", () => {
+    assert.equal(volatilityMultiplier({ technicals: { realizedVol30dPct: 50 } }).value, 1);
+    assert.equal(volatilityMultiplier({ technicals: { realizedVol30dPct: 75 } }).value, 1.5);
+    assert.equal(volatilityMultiplier({ technicals: { realizedVol30dPct: 900 } }).value, 3);
+    assert.equal(volatilityMultiplier({}).source, "default (no volatility data)");
   });
 
-  test("2. Validation rules: rejects malformed payload or missing consensus fields (Returns 400)", async () => {
-    // We pass an authenticated session mock header if needed or test validation when handler receives invalid request
-    // Test 1: Invalid recommendation
-    const invalidBody = {
-      asset: "BTC",
-      consensus: { ...mockConsensus, recommendation: "INVALID_REC" },
-    };
-
-    assert.strictEqual(invalidBody.consensus.recommendation, "INVALID_REC");
+  test("quote matches the MATH.md §3 reference values", () => {
+    const q = quoteSignal({ BUY: 85.5, SELL: 0, HOLD: 14.5 }, null)!;
+    assert.equal(q.priceUsd, 3.07);
+    assert.equal(q.informationValue, 0.9878);
+    assert.equal(q.entropy, 0.5972);
+    assert.equal(quoteSignal({ BUY: 0, SELL: 0, HOLD: 0 }, null), null);
   });
 
-  test("3. Successful price computation from passed-in ConsensusResult (Zero LLM calls)", () => {
-    // Pure calculation without triggering LLM or market data fetchers
-    const entropy = computeEntropy(mockConsensus.breakdown);
-    const infoValue = computeInformationValue(mockConsensus.breakdown);
-    const priceUsd = computeSignalPrice({
-      breakdown: mockConsensus.breakdown,
-      basePriceUsd: 10.0,
-      gamma: 2.5,
-      volatilityMultiplier: 1.0,
-    });
-
-    assert.strictEqual(Number(priceUsd.toFixed(2)), 3.07);
-    assert.strictEqual(Number(infoValue.toFixed(4)), 0.9878);
-    assert.strictEqual(Number(entropy.toFixed(4)), 0.5972);
+  test("endpoint 404s for unknown/private decisions and rejects POST", async () => {
+    const res = await quoteHandler(new Request("http://x/api/pricing/signal?id=00000000-0000-0000-0000-000000000000"));
+    assert.equal(res.status, 404);
+    assert.equal((await quotePostHandler()).status, 405);
   });
 });

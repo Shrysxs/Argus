@@ -9,6 +9,7 @@ import { buildSealPayload, isSealable } from "@/lib/analysis/seal-payload";
 import { publicChainConfig } from "@/lib/chain-public";
 import { formatDateTime, formatPct, formatUsd, shortAddress } from "@/lib/format";
 import { OUTCOME_HORIZON_DAYS } from "@/lib/outcomes";
+import { quoteSignal } from "@/lib/signal-quote";
 import { PageContainer } from "@/components/page-header";
 import { AgentCard } from "@/components/agent-card";
 import { ConsensusBar } from "@/components/consensus-bar";
@@ -53,6 +54,7 @@ export default async function DecisionPage({ params }: Props) {
   const abstained = d.agentVotes.filter((v) => v.status === "abstained").length;
   const failed = d.agentVotes.filter((v) => v.status === "failed").length;
   const chain = publicChainConfig();
+  const quote = quoteSignal(d.breakdown as Record<string, number>, d.snapshot?.data);
 
   return (
     <PageContainer className="space-y-6">
@@ -158,6 +160,12 @@ export default async function DecisionPage({ params }: Props) {
               {failed ? ` · ${failed} failed` : ""}
               {d.disagreement && d.recommendation !== "NONE" ? " · split committee" : ""}
             </p>
+            {quote && (
+              <p className="mt-2 text-[11px] text-muted-foreground" title="(log2(3) − Shannon entropy of the weighted votes) / log2(3) — 100% is unanimous (MATH.md §3)">
+                Information value{" "}
+                <span className="tabular font-mono text-foreground">{((quote.informationValue / quote.maxEntropy) * 100).toFixed(0)}%</span>
+              </p>
+            )}
           </section>
 
           {d.sealed && (

@@ -43,7 +43,7 @@ function toCard(agentId: string, outcome: AgentOutcome | undefined): AgentCardDa
   };
 }
 
-export function Workbench() {
+export function Workbench({ costCents, balanceCents }: { costCents: number; balanceCents: number }) {
   const router = useRouter();
   const [asset, setAsset] = useState("BTC");
   const [state, setState] = useState<RunState>({ status: "idle" });
@@ -106,6 +106,7 @@ export function Workbench() {
             >
               {running ? <Spinner className="text-background" /> : <Play className="size-3.5" />}
               {running ? "Deliberating…" : "Run analysis"}
+              {!running && costCents > 0 && <span className="font-mono font-normal opacity-70">· ${(costCents / 100).toFixed(2)}</span>}
             </button>
           </>
         }
@@ -129,7 +130,21 @@ export function Workbench() {
             )}
           </div>
 
-          {state.status === "idle" && (
+          {state.status === "idle" && balanceCents < costCents && (
+            <div className="my-auto py-6">
+              <Alert variant="warning">
+                <AlertTitle>Out of credits</AlertTitle>
+                <AlertDescription>
+                  A run costs ${(costCents / 100).toFixed(2)} and your balance is ${(balanceCents / 100).toFixed(2)}.{" "}
+                  <Link href="/pricing" className="underline">
+                    See pricing
+                  </Link>
+                </AlertDescription>
+              </Alert>
+            </div>
+          )}
+
+          {state.status === "idle" && balanceCents >= costCents && (
             <div className="my-auto py-10 text-center">
               <p className="font-serif text-base font-semibold">Ready when you are</p>
               <p className="mx-auto mt-1 max-w-xs text-xs text-muted-foreground">

@@ -2,13 +2,16 @@ import { NextResponse } from "next/server";
 import { getSessionUser } from "@/lib/auth/session";
 import { checkRateLimit, recordFailedAttempt } from "@/lib/auth/rate-limit";
 import { DataFetchError, UnsupportedAssetError } from "@argus/data-layer";
-import { runAnalysis, MIN_RESPONSIVE_AGENTS } from "@/lib/analysis/run-analysis";
+import { MIN_RESPONSIVE_AGENTS } from "@/lib/analysis/run-analysis";
+import { runPaidAnalysis } from "@/lib/analysis/paid";
+import { ANALYSIS_COST_CENTS, InsufficientCreditsError } from "@/lib/billing";
 import type { AnalysisEvent } from "@/lib/analysis/types";
 
 export { MIN_RESPONSIVE_AGENTS };
 export const maxDuration = 120;
 
 function describeError(err: unknown, asset: string): { status: number; error: string } {
+  if (err instanceof InsufficientCreditsError) return { status: 402, error: err.message };
   if (err instanceof UnsupportedAssetError) return { status: 400, error: `Unsupported asset "${asset}"` };
   if (err instanceof DataFetchError) return { status: 502, error: `Market data unavailable: ${err.message}` };
   return { status: 500, error: "Analysis failed. Please try again." };
@@ -42,9 +45,16 @@ export async function POST(req: Request) {
 
   const wantsStream = req.headers.get("accept")?.includes("text/event-stream");
 
+  if (user.creditsCents < ANALYSIS_COST_CENTS) {
+    return NextResponse.json(
+      { error: new InsufficientCreditsError(ANALYSIS_COST_CENTS, user.creditsCents).message },
+      { status: 402 },
+    );
+  }
+
   if (!wantsStream) {
     try {
-      return NextResponse.json(await runAnalysis({ userId: user.id, asset }));
+      return NextResponse.json(await runPaidAnalysis({ userId: user.id, asset }));
     } catch (err) {
       console.error("API /api/analyze execution error:", err);
       const { status, error } = describeError(err, asset);
@@ -65,7 +75,7 @@ export async function POST(req: Request) {
         }
       };
       try {
-        await runAnalysis({ userId: user.id, asset, onEvent: send });
+        await runPaidAnalysis({ userId: user.id, asset, onEvent: send });
       } catch (err) {
         console.error("API /api/analyze stream error:", err);
         send({ type: "error", ...describeError(err, asset) });

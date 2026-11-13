@@ -4,6 +4,7 @@ import { hashPassword } from "@/lib/auth/password";
 import { validateEmail, validatePassword } from "@/lib/auth/validation";
 import { createSession } from "@/lib/auth/session";
 import { checkRateLimit, recordFailedAttempt } from "@/lib/auth/rate-limit";
+import { recordSignupGrant, SIGNUP_GRANT_CENTS } from "@/lib/billing";
 
 export async function POST(request: Request) {
   try {
@@ -51,11 +52,12 @@ export async function POST(request: Request) {
 
     const passwordHash = await hashPassword(password as string);
 
-    const user = await db.user.create({
-      data: {
-        email: normalizedEmail,
-        passwordHash,
-      },
+    const user = await db.$transaction(async (tx) => {
+      const created = await tx.user.create({
+        data: { email: normalizedEmail, passwordHash, creditsCents: SIGNUP_GRANT_CENTS },
+      });
+      await recordSignupGrant(created.id, tx);
+      return created;
     });
 
     await createSession(user.id);

@@ -1,25 +1,26 @@
 import { NextResponse } from "next/server";
 import { getSessionUser } from "@/lib/auth/session";
-import { db } from "@/lib/db";
+import { ANALYSIS_COST_CENTS, centsToUsd, listTransactions } from "@/lib/billing";
 
-export async function GET(req?: Request) {
-  const sessionUser = await getSessionUser(req);
-  if (!sessionUser) {
+export async function GET(req: Request) {
+  const user = await getSessionUser(req);
+  if (!user) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
-
-  const user = await db.user.findUnique({
-    where: { id: sessionUser.id },
-    select: { id: true, email: true, creditsUsd: true },
-  });
-
-  if (!user) {
-    return NextResponse.json({ error: "User not found" }, { status: 404 });
-  }
-
+  const txns = await listTransactions(user.id, 20);
   return NextResponse.json({
     userId: user.id,
     email: user.email,
-    creditsUsd: user.creditsUsd,
+    creditsUsd: centsToUsd(user.creditsCents),
+    creditsCents: user.creditsCents,
+    analysisCostUsd: centsToUsd(ANALYSIS_COST_CENTS),
+    transactions: txns.map((t) => ({
+      id: t.id,
+      kind: t.kind,
+      amountUsd: centsToUsd(t.amountCents),
+      balanceAfterUsd: centsToUsd(t.balanceAfterCents),
+      reference: t.reference,
+      createdAt: t.createdAt,
+    })),
   });
 }

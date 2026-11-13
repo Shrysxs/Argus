@@ -1,236 +1,129 @@
-import { test, describe } from "node:test";
+import { test, describe, before, beforeEach } from "node:test";
 import assert from "node:assert/strict";
+import type { AgentRunResult } from "@argus/shared-types";
 import { db } from "../lib/db";
 import { createSession } from "../lib/auth/session";
-import { GET as getBalanceHandler } from "../app/api/billing/balance/route";
+import { chargeCredits, grantCredits, InsufficientCreditsError, listTransactions } from "../lib/billing";
+import { runPaidAnalysis } from "../lib/analysis/paid";
+import { GET as balanceHandler } from "../app/api/billing/balance/route";
 import { POST as topupHandler } from "../app/api/billing/topup/route";
-import { POST as pricingHandler } from "../app/api/pricing/signal/route";
-import type { ConsensusResult } from "@argus/shared-types";
+import { POST as signupHandler } from "../app/api/auth/signup/route";
 
-async function withRetry<T>(fn: () => Promise<T>, retries = 3): Promise<T> {
-  let lastErr: any;
-  for (let i = 0; i < retries; i++) {
-    try {
-      return await fn();
-    } catch (err: any) {
-      lastErr = err;
-      if (err?.code === "P1001" || err?.message?.includes("Can't reach database")) {
-        await new Promise((r) => setTimeout(r, 250 * (i + 1)));
-      } else {
-        throw err;
-      }
-    }
-  }
-  throw lastErr;
+const withCookie = (url: string, session: string, init: RequestInit = {}) =>
+  new Request(url, { ...init, headers: { ...(init.headers ?? {}), cookie: `argus_session=${session}`, "content-type": "application/json" } });
+
+async function balance(id: string) {
+  return (await db.user.findUniqueOrThrow({ where: { id } })).creditsCents;
 }
 
-describe("Credit Billing & Payment Enforcement Suite", () => {
-  const testEmail = `billing_test_${Date.now()}@argus.io`;
-  let testUserId = "";
-  let sessionId = "";
+const okResults = (n: number): AgentRunResult[] =>
+  ["value-hunter", "momentum-trader", "macro-analyst", "onchain-sleuth", "risk-guardian"].map((agentId, i) =>
+    i < n
+      ? { agentId, status: "ok", vote: { agentId, vote: "BUY", confidence: 70, reasoning: "r", dataPointsCited: ["x"], promptVersion: "v", modelUsed: "m" }, attempts: [] }
+      : { agentId, status: "failed", vote: null, error: "e", attempts: [] },
+  );
 
-  const mockConsensusUnanimous: ConsensusResult = {
-    recommendation: "BUY",
-    confidence: 100,
-    breakdown: { BUY: 100, SELL: 0, HOLD: 0 },
-    disagreement: false,
-    agentVotes: [],
-  };
+const snap = () => ({ snapshotId: crypto.randomUUID(), asset: "BTC", timestamp: Date.now(), hash: "ef".repeat(32), data: { price: { priceUsd: 1 } }, sources: [] });
 
-  test("0. Setup test user with default $25 starting credit & session (isAdmin=false)", async () => {
-    const user = await withRetry(() =>
-      db.user.create({
-        data: {
-          email: testEmail,
-          passwordHash: "somehashedpassword",
-          isAdmin: false,
-        },
-      })
+describe("credits & ledger", () => {
+  let userId: string;
+  let adminId: string;
+  let session: string;
+  let adminSession: string;
+
+  before(async () => {
+    await db.user.deleteMany({ where: { email: { in: ["billing_user@argus.test", "billing_admin@argus.test", "billing_signup@argus.test"] } } });
+    userId = (await db.user.create({ data: { email: "billing_user@argus.test", passwordHash: "x" } })).id;
+    adminId = (await db.user.create({ data: { email: "billing_admin@argus.test", passwordHash: "x", isAdmin: true } })).id;
+    session = await createSession(userId);
+    adminSession = await createSession(adminId);
+  });
+
+  beforeEach(async () => {
+    await db.user.update({ where: { id: userId }, data: { creditsCents: 2500 } });
+  });
+
+  test("signup grants $25 and writes a matching ledger entry", async () => {
+    const res = await signupHandler(
+      new Request("http://x/api/auth/signup", { method: "POST", headers: { "x-forwarded-for": "10.9.9.9" }, body: JSON.stringify({ email: "billing_signup@argus.test", password: "Password123" }) }),
     );
-
-    testUserId = user.id;
-    assert.strictEqual(user.creditsUsd, 25.0);
-    assert.strictEqual(user.isAdmin, false);
-
-    sessionId = await createSession(user.id);
-    assert.ok(sessionId);
+    assert.equal(res.status, 201);
+    const u = await db.user.findUniqueOrThrow({ where: { email: "billing_signup@argus.test" } });
+    assert.equal(u.creditsCents, 2500);
+    const [t] = await listTransactions(u.id);
+    assert.equal(t!.kind, "signup_grant");
+    assert.equal(t!.balanceAfterCents, 2500);
   });
 
-  test("1. GET /api/billing/balance: returns logged-in user's credit balance", async () => {
-    const req = new Request("http://localhost:3000/api/billing/balance", {
-      headers: { Cookie: `argus_session=${sessionId}` },
-    });
-
-    const res = await getBalanceHandler(req);
-    assert.strictEqual(res.status, 200);
-
-    const body = await res.json();
-    assert.strictEqual(body.userId, testUserId);
-    assert.strictEqual(body.email, testEmail);
-    assert.strictEqual(body.creditsUsd, 25.0);
+  test("charge debits exactly and records balance after", async () => {
+    const r = await chargeCredits(userId, 137, "analysis", "ref-1");
+    assert.equal(r.balanceCents, 2363);
+    assert.equal(await balance(userId), 2363);
+    const [t] = await listTransactions(userId, 1);
+    assert.equal(t!.amountCents, -137);
+    assert.equal(t!.balanceAfterCents, 2363);
   });
 
-  test("2a. POST /api/billing/topup: authenticated NON-ADMIN gets HTTP 403 Forbidden", async () => {
-    const req = new Request("http://localhost:3000/api/billing/topup", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Cookie: `argus_session=${sessionId}`,
-      },
-      body: JSON.stringify({ amountUsd: 15.0 }),
-    });
-
-    const res = await topupHandler(req);
-    assert.strictEqual(res.status, 403);
-
-    const body = await res.json();
-    assert.match(body.error, /Forbidden/);
-
-    // Balance remains untouched
-    const dbUser = await withRetry(() => db.user.findUnique({ where: { id: testUserId } }));
-    assert.strictEqual(dbUser?.creditsUsd, 25.0);
+  test("insufficient balance throws and changes nothing", async () => {
+    await assert.rejects(() => chargeCredits(userId, 2501, "analysis"), InsufficientCreditsError);
+    assert.equal(await balance(userId), 2500);
   });
 
-  test("2b. POST /api/billing/topup: ADMIN user (isAdmin=true) succeeds and increments balance", async () => {
-    // Elevate user to admin
-    await withRetry(() =>
-      db.user.update({
-        where: { id: testUserId },
-        data: { isAdmin: true },
-      })
+  test("concurrent charges can never overdraw", async () => {
+    await db.user.update({ where: { id: userId }, data: { creditsCents: 300 } });
+    const results = await Promise.allSettled(Array.from({ length: 6 }, () => chargeCredits(userId, 100, "analysis")));
+    assert.equal(results.filter((r) => r.status === "fulfilled").length, 3);
+    assert.equal(await balance(userId), 0);
+  });
+
+  test("paid analysis charges once, and refunds when no analyst responds", async () => {
+    const ok = await runPaidAnalysis({ userId, asset: "BTC", costCents: 100, deps: { fetchSnapshot: async () => snap(), runSyndicateDetailed: async () => okResults(4) } });
+    assert.equal(ok.chargedCents, 100);
+    assert.equal(await balance(userId), 2400);
+    const [charge] = await listTransactions(userId, 1);
+    assert.equal(charge!.reference, ok.id);
+
+    const none = await runPaidAnalysis({ userId, asset: "BTC", costCents: 100, deps: { fetchSnapshot: async () => snap(), runSyndicateDetailed: async () => okResults(0) } });
+    assert.equal(none.chargedCents, 0);
+    assert.equal(await balance(userId), 2400);
+  });
+
+  test("paid analysis refunds when the run throws", async () => {
+    await assert.rejects(() =>
+      runPaidAnalysis({ userId, asset: "BTC", costCents: 100, deps: { fetchSnapshot: async () => { throw new Error("down"); } } }),
     );
+    assert.equal(await balance(userId), 2500);
+    const [refund] = await listTransactions(userId, 1);
+    assert.equal(refund!.kind, "refund");
+  });
 
-    const req = new Request("http://localhost:3000/api/billing/topup", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Cookie: `argus_session=${sessionId}`,
-      },
-      body: JSON.stringify({ amountUsd: 15.0 }),
-    });
-
-    const res = await topupHandler(req);
-    assert.strictEqual(res.status, 200);
-
+  test("balance endpoint reports USD and recent ledger entries", async () => {
+    const res = await balanceHandler(withCookie("http://x/api/billing/balance", session));
+    assert.equal(res.status, 200);
     const body = await res.json();
-    assert.strictEqual(body.amountAddedUsd, 15.0);
-    assert.strictEqual(body.newBalanceUsd, 40.0);
-
-    // Verify DB reflection
-    const dbUser = await withRetry(() => db.user.findUnique({ where: { id: testUserId } }));
-    assert.strictEqual(dbUser?.creditsUsd, 40.0);
+    assert.equal(body.creditsUsd, 25);
+    assert.ok(Array.isArray(body.transactions));
   });
 
-  test("3. POST /api/pricing/signal: sufficient balance deducts exact priceUsd ($10.00)", async () => {
-    const req = new Request("http://localhost:3000/api/pricing/signal", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Cookie: `argus_session=${sessionId}`,
-      },
-      body: JSON.stringify({
-        asset: "BTC",
-        consensus: mockConsensusUnanimous,
-      }),
-    });
+  test("top-up is admin-only, validated, and ledgered", async () => {
+    const forbidden = await topupHandler(withCookie("http://x/api/billing/topup", session, { method: "POST", body: JSON.stringify({ amountUsd: 10 }) }));
+    assert.equal(forbidden.status, 403);
 
-    const res = await pricingHandler(req);
-    assert.strictEqual(res.status, 200);
+    const bad = await topupHandler(withCookie("http://x", adminSession, { method: "POST", body: JSON.stringify({ amountUsd: -5, targetUserId: userId }) }));
+    assert.equal(bad.status, 400);
 
-    const body = await res.json();
-    assert.strictEqual(body.priceUsd, 10.0);
-    assert.strictEqual(body.remainingCreditsUsd, 30.0);
-    assert.strictEqual(body.paymentStatus, "paid_from_credits");
+    const missing = await topupHandler(withCookie("http://x", adminSession, { method: "POST", body: JSON.stringify({ amountUsd: 5, targetUserId: "nope" }) }));
+    assert.equal(missing.status, 404);
 
-    // Verify DB reflection
-    const dbUser = await withRetry(() => db.user.findUnique({ where: { id: testUserId } }));
-    assert.strictEqual(dbUser?.creditsUsd, 30.0);
+    const ok = await topupHandler(withCookie("http://x", adminSession, { method: "POST", body: JSON.stringify({ amountUsd: 15, targetUserId: userId }) }));
+    assert.equal(ok.status, 200);
+    assert.equal(await balance(userId), 4000);
+    const [t] = await listTransactions(userId, 1);
+    assert.equal(t!.kind, "admin_grant");
+    assert.equal(t!.reference, adminId);
   });
 
-  test("4. POST /api/pricing/signal: insufficient balance returns HTTP 402 with zero deduction", async () => {
-    // Set user credits to $5.00 (below $10.00 unanimous signal price)
-    await withRetry(() =>
-      db.user.update({
-        where: { id: testUserId },
-        data: { creditsUsd: 5.0 },
-      })
-    );
-
-    const req = new Request("http://localhost:3000/api/pricing/signal", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Cookie: `argus_session=${sessionId}`,
-      },
-      body: JSON.stringify({
-        asset: "BTC",
-        consensus: mockConsensusUnanimous,
-      }),
-    });
-
-    const res = await pricingHandler(req);
-    assert.strictEqual(res.status, 402);
-
-    const body = await res.json();
-    assert.strictEqual(body.priceUsd, 10.0);
-    assert.strictEqual(body.currentBalanceUsd, 5.0);
-    assert.strictEqual(body.requiredTopupUsd, 5.0);
-
-    // Verify DB balance remains untouched at $5.00
-    const dbUser = await withRetry(() => db.user.findUnique({ where: { id: testUserId } }));
-    assert.strictEqual(dbUser?.creditsUsd, 5.0);
-  });
-
-  test("5. Concurrency & Anti-Double-Spend: simultaneous pricing calls cannot spend balance below 0", async () => {
-    // Reset balance to exactly $10.00 (enough for exactly ONE $10.00 signal call)
-    await withRetry(() =>
-      db.user.update({
-        where: { id: testUserId },
-        data: { creditsUsd: 10.0 },
-      })
-    );
-
-    const req1 = new Request("http://localhost:3000/api/pricing/signal", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Cookie: `argus_session=${sessionId}`,
-      },
-      body: JSON.stringify({
-        asset: "BTC",
-        consensus: mockConsensusUnanimous,
-      }),
-    });
-
-    const req2 = new Request("http://localhost:3000/api/pricing/signal", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Cookie: `argus_session=${sessionId}`,
-      },
-      body: JSON.stringify({
-        asset: "BTC",
-        consensus: mockConsensusUnanimous,
-      }),
-    });
-
-    // Fire both requests simultaneously
-    const [res1, res2] = await Promise.all([
-      pricingHandler(req1),
-      pricingHandler(req2),
-    ]);
-
-    const statuses = [res1.status, res2.status].sort();
-    assert.deepStrictEqual(statuses, [200, 402]);
-
-    // Verify DB balance is exactly $0.00 and NEVER negative
-    const dbUser = await withRetry(() => db.user.findUnique({ where: { id: testUserId } }));
-    assert.strictEqual(dbUser?.creditsUsd, 0.0);
-  });
-
-  test("6. Cleanup test user & sessions", async () => {
-    if (testUserId) {
-      await withRetry(() => db.user.delete({ where: { id: testUserId } }));
-    }
+  test("grant rejects non-positive amounts", async () => {
+    await assert.rejects(() => grantCredits(userId, 0, "admin_grant"));
   });
 });
