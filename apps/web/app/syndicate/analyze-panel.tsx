@@ -16,11 +16,11 @@ type PanelState =
 function voteBadgeColor(vote: VoteDirection): string {
   switch (vote) {
     case "BUY":
-      return "text-[#16A34A] bg-[#16A34A]/10 border-[#16A34A]/30";
+      return "text-buy bg-buy/10 border-buy/30";
     case "SELL":
-      return "text-[#DC2626] bg-[#DC2626]/10 border-[#DC2626]/30";
+      return "text-sell bg-sell/10 border-sell/30";
     case "HOLD":
-      return "text-[#D97706] bg-[#D97706]/10 border-[#D97706]/30";
+      return "text-hold bg-hold/10 border-hold/30";
   }
 }
 
@@ -49,21 +49,21 @@ function AgentCard({
   return (
     <div className={`relative rounded-sm border p-4 transition-colors ${
       isLoading
-        ? "border-[#1E222A] bg-[#12141A] animate-pulse"
+        ? "border-border bg-surface animate-pulse"
         : vote
-        ? "border-[#1E222A] bg-[#12141A] hover:border-[#B08D57]/40"
-        : "border-[#1E222A]/50 bg-[#0A0B0D] opacity-75"
+        ? "border-border bg-surface hover:border-brass/40"
+        : "border-border/50 bg-background opacity-75"
     }`}>
       <div className="flex items-start justify-between gap-2">
         <div className="flex items-center gap-2">
-          <span className="flex h-7 w-7 items-center justify-center rounded-sm bg-[#181A24] text-[10px] font-mono font-bold border border-[#1E222A] text-[#B08D57]">
+          <span className="flex h-7 w-7 items-center justify-center rounded-sm bg-surface-2 text-[10px] font-mono font-bold border border-border text-brass">
             {icon}
           </span>
           <div>
-            <p className="text-xs font-serif font-bold text-[#F3F4F6] tracking-tight">
+            <p className="text-xs font-serif font-bold text-foreground tracking-tight">
               {agent.name}
             </p>
-            <p className="text-[10px] font-mono text-neutral-400">
+            <p className="text-[10px] font-mono text-muted-foreground">
               {agent.framework}
             </p>
           </div>
@@ -86,7 +86,7 @@ function AgentCard({
           <div className="h-2.5 w-3/4 animate-pulse rounded-sm bg-white/10" />
           <div className="h-2.5 w-1/2 animate-pulse rounded-sm bg-white/10" />
           <div className="h-2.5 w-5/6 animate-pulse rounded-sm bg-white/10" />
-          <div className="pt-2 text-[10px] font-mono text-neutral-500 animate-pulse">
+          <div className="pt-2 text-[10px] font-mono text-muted-foreground/80 animate-pulse">
             Executing quantitative model…
           </div>
         </div>
@@ -96,27 +96,27 @@ function AgentCard({
       {vote && (
         <div className="mt-4 space-y-3">
           <div className="space-y-1">
-            <div className="flex items-center justify-between text-[10px] font-mono text-neutral-400">
+            <div className="flex items-center justify-between text-[10px] font-mono text-muted-foreground">
               <span>Confidence Conviction</span>
-              <span className="font-bold font-mono text-[#F3F4F6] tabular-nums">
+              <span className="font-bold font-mono text-foreground tabular-nums">
                 {vote.confidence}%
               </span>
             </div>
-            <div className="h-1 overflow-hidden rounded-none bg-[#181A24] border border-[#1E222A]">
+            <div className="h-1 overflow-hidden rounded-none bg-surface-2 border border-border">
               <div
                 className={`h-full transition-all duration-300 ${
                   vote.vote === "BUY"
-                    ? "bg-[#16A34A]"
+                    ? "bg-buy"
                     : vote.vote === "SELL"
-                    ? "bg-[#DC2626]"
-                    : "bg-[#D97706]"
+                    ? "bg-sell"
+                    : "bg-hold"
                 }`}
                 style={{ width: `${vote.confidence}%` }}
               />
             </div>
           </div>
 
-          <p className="text-xs leading-relaxed text-neutral-300 font-sans">
+          <p className="text-xs leading-relaxed text-foreground/80 font-sans">
             {vote.reasoning}
           </p>
 
@@ -125,7 +125,7 @@ function AgentCard({
               {vote.dataPointsCited.map((cite, i) => (
                 <span
                   key={i}
-                  className="rounded-sm bg-[#181A24] border border-[#1E222A] px-1.5 py-0.5 text-[10px] font-mono text-neutral-300"
+                  className="rounded-sm bg-surface-2 border border-border px-1.5 py-0.5 text-[10px] font-mono text-foreground/80"
                 >
                   {cite}
                 </span>
@@ -133,8 +133,8 @@ function AgentCard({
             </div>
           )}
 
-          <div className="mt-2 flex items-center justify-between pt-2 border-t border-[#1E222A] text-[9px] font-mono text-neutral-500">
-            <span className="text-[#B08D57] font-semibold">{vote.promptVersion}</span>
+          <div className="mt-2 flex items-center justify-between pt-2 border-t border-border text-[9px] font-mono text-muted-foreground/80">
+            <span className="text-brass font-semibold">{vote.promptVersion}</span>
             <span>{vote.modelUsed}</span>
           </div>
         </div>
@@ -143,7 +143,7 @@ function AgentCard({
       {/* Dormant: no data, not loading */}
       {!isLoading && !vote && (
         <div className="mt-4 pt-2">
-          <p className="text-[11px] font-mono text-neutral-500 italic">
+          <p className="text-[11px] font-mono text-muted-foreground/80 italic">
             Awaiting committee deliberation…
           </p>
         </div>
@@ -241,7 +241,7 @@ export function AnalyzePanel({
     <div className="space-y-8">
       {/* Degraded mode warning banner */}
       {state.status === "success" && state.result.degraded && (
-        <div className="rounded-lg border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-amber-400">
+        <div className="rounded-lg border border-warning/30 bg-warning/10 px-4 py-3 text-warning">
           <p className="text-xs font-medium">
             Degraded Syndicate Round: Only {state.result.responsiveCount ?? votes.length} of 5 models responded.
             Consensus threshold (3/5) was partially degraded.
@@ -257,31 +257,31 @@ export function AnalyzePanel({
         </div>
 
         {/* Right Column (5 Cols): Consensus & Sealing Box */}
-        <div className="lg:col-span-5 h-[480px] flex flex-col justify-between rounded-sm border border-[#1E222A] bg-[#12141A] p-6">
+        <div className="lg:col-span-5 h-[480px] flex flex-col justify-between rounded-sm border border-border bg-surface p-6">
           <div>
-            <div className="flex items-center justify-between border-b border-[#1E222A] pb-3">
+            <div className="flex items-center justify-between border-b border-border pb-3">
               <div>
-                <span className="text-[10px] font-mono uppercase tracking-widest text-[#B08D57]">
+                <span className="text-[10px] font-mono uppercase tracking-widest text-brass">
                   Consensus Engine
                 </span>
-                <h2 className="text-lg font-serif font-bold text-[#F3F4F6]">
+                <h2 className="text-lg font-serif font-bold text-foreground">
                   Syndicate Deliberation
                 </h2>
               </div>
-              <span className="rounded-sm bg-[#181A24] px-2.5 py-1 text-[10px] font-mono text-neutral-300 border border-[#1E222A]">
+              <span className="rounded-sm bg-surface-2 px-2.5 py-1 text-[10px] font-mono text-foreground/80 border border-border">
                 5 Models
               </span>
             </div>
 
             {state.status === "idle" && (
               <div className="my-12 text-center space-y-2">
-                <div className="mx-auto flex h-10 w-10 items-center justify-center rounded-sm bg-[#181A24] border border-[#1E222A] text-[#B08D57] font-mono font-bold text-sm">
+                <div className="mx-auto flex h-10 w-10 items-center justify-center rounded-sm bg-surface-2 border border-border text-brass font-mono font-bold text-sm">
                   SYS
                 </div>
-                <p className="text-sm font-serif font-semibold text-[#F3F4F6]">
+                <p className="text-sm font-serif font-semibold text-foreground">
                   Awaiting Deliberation Trigger
                 </p>
-                <p className="text-xs text-neutral-400 max-w-xs mx-auto font-sans">
+                <p className="text-xs text-muted-foreground max-w-xs mx-auto font-sans">
                   Click &quot;Run Analysis&quot; above to execute 5 specialized model frameworks for {asset}.
                 </p>
               </div>
@@ -291,7 +291,7 @@ export function AnalyzePanel({
               <div className="my-12 text-center space-y-3">
                 <div className="mx-auto flex h-12 w-12 items-center justify-center">
                   <svg
-                    className="h-8 w-8 animate-spin text-[#B08D57]"
+                    className="h-8 w-8 animate-spin text-brass"
                     viewBox="0 0 24 24"
                     fill="none"
                   >
@@ -310,21 +310,21 @@ export function AnalyzePanel({
                     />
                   </svg>
                 </div>
-                <p className="text-sm font-serif font-semibold text-[#F3F4F6]">
+                <p className="text-sm font-serif font-semibold text-foreground">
                   Deliberating across 5 frameworks…
                 </p>
-                <p className="text-xs font-mono text-neutral-400">
+                <p className="text-xs font-mono text-muted-foreground">
                   Value • Momentum • Macro • On-chain • Risk
                 </p>
               </div>
             )}
 
             {state.status === "error" && (
-              <div className="my-8 rounded-sm border border-red-500/30 bg-red-500/10 px-5 py-4 text-center">
-                <p className="text-sm font-serif font-medium text-red-400">
+              <div className="my-8 rounded-sm border border-destructive/30 bg-destructive/10 px-5 py-4 text-center">
+                <p className="text-sm font-serif font-medium text-destructive">
                   Analysis Unavailable
                 </p>
-                <p className="mt-1 text-xs font-mono text-red-400/80">{state.message}</p>
+                <p className="mt-1 text-xs font-mono text-destructive/80">{state.message}</p>
               </div>
             )}
 
@@ -332,35 +332,35 @@ export function AnalyzePanel({
               <div className="mt-4 space-y-4">
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-[10px] font-mono uppercase tracking-widest text-neutral-400">
+                    <p className="text-[10px] font-mono uppercase tracking-widest text-muted-foreground">
                       Recommendation
                     </p>
                     <p className={`mt-1 text-3xl font-serif font-extrabold tracking-tight ${
                       state.result.recommendation === "BUY"
-                        ? "text-[#16A34A]"
+                        ? "text-buy"
                         : state.result.recommendation === "SELL"
-                        ? "text-[#DC2626]"
-                        : "text-[#D97706]"
+                        ? "text-sell"
+                        : "text-hold"
                     }`}>
                       {state.result.recommendation}
                     </p>
                   </div>
                   <div className="text-right">
-                    <p className="text-[10px] font-mono text-neutral-400">Confidence Score</p>
-                    <p className="text-3xl font-mono font-bold tabular-nums text-[#F3F4F6]">
+                    <p className="text-[10px] font-mono text-muted-foreground">Confidence Score</p>
+                    <p className="text-3xl font-mono font-bold tabular-nums text-foreground">
                       {state.result.confidence.toFixed(1)}%
                     </p>
                   </div>
                 </div>
 
                 {/* Prominent Research Disclaimer directly next to signal output */}
-                <div className="rounded-sm border border-[#1E222A] bg-[#181A24] p-2.5 text-center text-xs font-sans text-neutral-300">
-                  <span className="font-semibold text-[#F3F4F6]">Research &amp; educational tool only.</span> Not financial advice.
+                <div className="rounded-sm border border-border bg-surface-2 p-2.5 text-center text-xs font-sans text-foreground/80">
+                  <span className="font-semibold text-foreground">Research &amp; educational tool only.</span> Not financial advice.
                 </div>
 
                 {/* Vote breakdown bar */}
                 <div className="space-y-1.5 pt-1">
-                  <div className="flex justify-between text-xs text-neutral-400 font-mono">
+                  <div className="flex justify-between text-xs text-muted-foreground font-mono">
                     <span>Vote Breakdown</span>
                     <span>Weighted Consensus</span>
                   </div>
@@ -371,16 +371,16 @@ export function AnalyzePanel({
                         number,
                       ][]
                     ).map(([direction, weight]) => (
-                      <span key={direction} className="text-neutral-300">
+                      <span key={direction} className="text-foreground/80">
                         {direction}:{" "}
-                        <strong className="text-[#F3F4F6]">{weight.toFixed(0)}</strong>
+                        <strong className="text-foreground">{weight.toFixed(0)}</strong>
                       </span>
                     ))}
                   </div>
                 </div>
 
                 {state.result.disagreement && (
-                  <div className="rounded-sm border border-amber-500/30 bg-amber-500/10 px-3 py-1.5 text-xs font-mono text-amber-400">
+                  <div className="rounded-sm border border-warning/30 bg-warning/10 px-3 py-1.5 text-xs font-mono text-warning">
                     High Disagreement: Committee votes are split near threshold.
                   </div>
                 )}
@@ -390,11 +390,11 @@ export function AnalyzePanel({
 
           {/* On-Chain Sealing Box inside Right Column */}
           {state.status === "success" && (
-            <div className="pt-4 border-t border-[#1E222A] space-y-3">
+            <div className="pt-4 border-t border-border space-y-3">
               {!sealTxHash && (
                 <div className="space-y-3">
                   <div className="space-y-1.5">
-                    <span className="text-xs font-medium text-neutral-400 font-mono">
+                    <span className="text-xs font-medium text-muted-foreground font-mono">
                       Select signer path:
                     </span>
                     <div className="flex flex-wrap gap-2 text-xs font-mono">
@@ -407,13 +407,13 @@ export function AnalyzePanel({
                         }}
                         className={`flex items-center gap-2 rounded-sm border px-3 py-1.5 transition-all ${
                           sealMode === "client"
-                            ? "border-[#B08D57] bg-[#181A24] text-[#F3F4F6] font-semibold"
-                            : "border-[#1E222A] bg-[#0A0B0D] text-neutral-400 hover:text-[#F3F4F6]"
+                            ? "border-brass bg-surface-2 text-foreground font-semibold"
+                            : "border-border bg-background text-muted-foreground hover:text-foreground"
                         }`}
                       >
-                        <span className={`h-1.5 w-1.5 rounded-full ${sealMode === "client" ? "bg-[#B08D57]" : "bg-neutral-500"}`} />
+                        <span className={`h-1.5 w-1.5 rounded-full ${sealMode === "client" ? "bg-brass" : "bg-muted-foreground"}`} />
                         <span>Client Wallet</span>
-                        <span className={`text-[10px] ${sealMode === "client" ? "text-neutral-300" : "text-neutral-500"}`}>
+                        <span className={`text-[10px] ${sealMode === "client" ? "text-foreground/80" : "text-muted-foreground/80"}`}>
                           ({address ? truncatedAddress : "Not Connected"})
                         </span>
                       </button>
@@ -427,28 +427,28 @@ export function AnalyzePanel({
                         }}
                         className={`flex items-center gap-2 rounded-sm border px-3 py-1.5 transition-all ${
                           sealMode === "backend"
-                            ? "border-[#B08D57] bg-[#181A24] text-[#F3F4F6] font-semibold"
-                            : "border-[#1E222A] bg-[#0A0B0D] text-neutral-400 hover:text-[#F3F4F6]"
+                            ? "border-brass bg-surface-2 text-foreground font-semibold"
+                            : "border-border bg-background text-muted-foreground hover:text-foreground"
                         }`}
                       >
-                        <span className={`h-1.5 w-1.5 rounded-full ${sealMode === "backend" ? "bg-[#B08D57]" : "bg-neutral-500"}`} />
+                        <span className={`h-1.5 w-1.5 rounded-full ${sealMode === "backend" ? "bg-brass" : "bg-muted-foreground"}`} />
                         <span>Backend Signer</span>
-                        <span className={`text-[10px] ${sealMode === "backend" ? "text-neutral-300" : "text-neutral-500"}`}>
+                        <span className={`text-[10px] ${sealMode === "backend" ? "text-foreground/80" : "text-muted-foreground/80"}`}>
                           (System Keystore)
                         </span>
                       </button>
                     </div>
 
-                    <div className="text-[11px] text-neutral-400 pt-0.5 font-mono">
+                    <div className="text-[11px] text-muted-foreground pt-0.5 font-mono">
                       {sealMode === "client" ? (
                         <span>
-                          <strong className="text-[#F3F4F6] font-medium">Signer:</strong> {address ? address : "Connect Wallet"} •{" "}
-                          <strong className="text-amber-400 font-medium">Gas:</strong> User Pays (~0.0001 MON)
+                          <strong className="text-foreground font-medium">Signer:</strong> {address ? address : "Connect Wallet"} •{" "}
+                          <strong className="text-warning font-medium">Gas:</strong> User Pays (~0.0001 MON)
                         </span>
                       ) : (
                         <span>
-                          <strong className="text-[#F3F4F6] font-medium">Signer:</strong> System Keystore •{" "}
-                          <strong className="text-emerald-400 font-medium">Gas:</strong> Protocol Pays (0 MON)
+                          <strong className="text-foreground font-medium">Signer:</strong> System Keystore •{" "}
+                          <strong className="text-success font-medium">Gas:</strong> Protocol Pays (0 MON)
                         </span>
                       )}
                     </div>
@@ -458,7 +458,7 @@ export function AnalyzePanel({
                     <button
                       type="button"
                       onClick={connect}
-                      className="w-full rounded-sm bg-[#F3F4F6] py-2 text-xs font-bold text-[#0A0B0D] transition-colors hover:bg-neutral-200"
+                      className="w-full rounded-sm bg-foreground py-2 text-xs font-bold text-background transition-colors hover:bg-foreground/90"
                     >
                       Connect Wallet to Seal
                     </button>
@@ -466,7 +466,7 @@ export function AnalyzePanel({
                     <button
                       type="button"
                       onClick={switchNetwork}
-                      className="w-full rounded-sm border border-amber-500/40 bg-amber-500/10 py-2 text-xs font-mono text-amber-400 transition-colors hover:bg-amber-500/20"
+                      className="w-full rounded-sm border border-warning/40 bg-warning/10 py-2 text-xs font-mono text-warning transition-colors hover:bg-warning/20"
                     >
                       Switch to Monad Testnet
                     </button>
@@ -475,7 +475,7 @@ export function AnalyzePanel({
                       type="button"
                       disabled={sealing}
                       onClick={handleSeal}
-                      className="w-full rounded-sm bg-[#F3F4F6] py-2 text-xs font-bold text-[#0A0B0D] transition-colors hover:bg-neutral-200 disabled:cursor-not-allowed disabled:opacity-50"
+                      className="w-full rounded-sm bg-foreground py-2 text-xs font-bold text-background transition-colors hover:bg-foreground/90 disabled:cursor-not-allowed disabled:opacity-50"
                     >
                       {sealing
                         ? "Sealing On-Chain…"
@@ -488,13 +488,13 @@ export function AnalyzePanel({
               )}
 
               {sealTxHash && (
-                <div className="flex items-center gap-2 rounded-sm border border-emerald-500/30 bg-emerald-500/10 px-4 py-2 text-xs text-emerald-400 font-mono">
+                <div className="flex items-center gap-2 rounded-sm border border-success/30 bg-success/10 px-4 py-2 text-xs text-success font-mono">
                   <span className="font-semibold">Sealed On-Chain ({sealMode === "client" ? "Client Signed" : "Backend Signed"}):</span>
                   <a
                     href={`https://testnet.monadexplorer.com/tx/${sealTxHash}`}
                     target="_blank"
                     rel="noreferrer"
-                    className="font-mono underline hover:text-emerald-300"
+                    className="font-mono underline hover:text-success"
                   >
                     {sealTxHash.slice(0, 10)}...{sealTxHash.slice(-8)}
                   </a>
@@ -502,7 +502,7 @@ export function AnalyzePanel({
               )}
 
               {sealError && (
-                <div className="rounded-sm border border-red-500/30 bg-red-500/10 px-4 py-2 text-xs text-red-400 font-mono">
+                <div className="rounded-sm border border-destructive/30 bg-destructive/10 px-4 py-2 text-xs text-destructive font-mono">
                   <span className="font-semibold">Sealing Error:</span> {sealError}
                 </div>
               )}
@@ -513,16 +513,16 @@ export function AnalyzePanel({
 
       {/* Committee Chamber: 5 agent deliberation cards */}
       <div className="pt-6">
-        <div className="flex items-center justify-between mb-4 border-b border-[#1E222A] pb-3">
+        <div className="flex items-center justify-between mb-4 border-b border-border pb-3">
           <div>
-            <h2 className="text-xs font-mono uppercase tracking-widest text-[#B08D57]">
+            <h2 className="text-xs font-mono uppercase tracking-widest text-brass">
               Investment Committee Roster
             </h2>
-            <p className="text-sm font-serif font-semibold text-[#F3F4F6]">
+            <p className="text-sm font-serif font-semibold text-foreground">
               Specialized Model Frameworks &amp; Deliberation Dossiers
             </p>
           </div>
-          <span className="text-xs font-mono text-neutral-400">
+          <span className="text-xs font-mono text-muted-foreground">
             5/5 Frameworks Active
           </span>
         </div>

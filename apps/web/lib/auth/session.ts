@@ -86,6 +86,7 @@ export async function getSessionUser(reqOrSessionId?: Request | string) {
     id: session.user.id,
     email: session.user.email,
     creditsUsd: session.user.creditsUsd,
+    isAdmin: session.user.isAdmin,
     createdAt: session.user.createdAt,
   };
 }

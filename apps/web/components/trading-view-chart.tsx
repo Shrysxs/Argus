@@ -1,6 +1,8 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { useTheme } from "next-themes";
+import { Spinner } from "@workspace/ui/components/spinner";
 
 interface TradingViewChartProps {
   asset: string;
@@ -33,6 +35,8 @@ export function TradingViewChart({ asset }: TradingViewChartProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const [scriptLoaded, setScriptLoaded] = useState(false);
 
+  const { resolvedTheme } = useTheme();
+  const theme = resolvedTheme === "light" ? "light" : "dark";
   const symbol = getTradingViewSymbol(asset);
   const containerId = `tradingview_${asset.toLowerCase().replace(/[^a-z0-9]/g, "")}_chart`;
 
@@ -63,73 +67,40 @@ export function TradingViewChart({ asset }: TradingViewChartProps) {
 
     const widgetContainer = document.createElement("div");
     widgetContainer.id = containerId;
-    widgetContainer.className = "h-full w-full min-h-[420px]";
+    widgetContainer.className = "h-full w-full";
     containerRef.current.appendChild(widgetContainer);
 
     if ((window as any).TradingView) {
       new (window as any).TradingView.widget({
         autosize: true,
-        symbol: symbol,
-        interval: "60",
+        symbol,
+        interval: "D",
         timezone: "Etc/UTC",
-        theme: "dark",
+        theme,
         style: "1",
         locale: "en",
-        toolbar_bg: "#08090C",
         enable_publishing: false,
         allow_symbol_change: false,
         container_id: containerId,
-        hide_side_toolbar: false,
-        studies: ["RSI@tv-basicstudies", "MASimple@tv-basicstudies"],
-        backgroundColor: "rgba(8, 9, 12, 0.8)",
-        gridColor: "rgba(255, 255, 255, 0.05)",
+        hide_side_toolbar: true,
+        studies: ["RSI@tv-basicstudies", "MACD@tv-basicstudies"],
       });
     }
-  }, [scriptLoaded, symbol, containerId]);
+  }, [scriptLoaded, symbol, containerId, theme]);
 
   return (
-    <div className="relative h-full w-full overflow-hidden rounded-xl border border-white/10 bg-slate-950/60 p-1 backdrop-blur-md shadow-2xl">
-      <div className="flex items-center justify-between px-3 py-2 border-b border-white/5 bg-slate-900/40">
+    <div className="flex h-full w-full flex-col overflow-hidden rounded-md border border-border bg-surface">
+      <div className="flex items-center justify-between border-b border-border px-3 py-2">
         <div className="flex items-center gap-2">
-          <span className="h-2 w-2 rounded-full bg-[var(--accent-glow)] animate-pulse" />
-          <span className="text-xs font-mono font-semibold tracking-wide text-foreground">
-            {asset.toUpperCase()}/USDT
-          </span>
-          <span className="text-[10px] font-mono text-muted-foreground">
-            • BINANCE LIVE
-          </span>
+          <span className="font-mono text-xs font-semibold tracking-wide">{asset.toUpperCase()}/USDT</span>
+          <span className="font-mono text-[10px] text-muted-foreground">Daily · Binance via TradingView</span>
         </div>
-        <span className="text-[10px] font-mono text-muted-foreground/60">
-          Real-Time Technical Action
-        </span>
+        <span className="hidden font-mono text-[10px] text-muted-foreground sm:inline">Chart for context — agents use the snapshot data</span>
       </div>
-
-      <div
-        ref={containerRef}
-        className="h-[440px] w-full relative flex items-center justify-center"
-      >
+      <div ref={containerRef} className="relative flex min-h-[320px] flex-1 items-center justify-center">
         {!scriptLoaded && (
           <div className="flex items-center gap-2 text-xs text-muted-foreground">
-            <svg
-              className="h-4 w-4 animate-spin text-[var(--accent-glow)]"
-              viewBox="0 0 24 24"
-              fill="none"
-            >
-              <circle
-                className="opacity-25"
-                cx="12"
-                cy="12"
-                r="10"
-                stroke="currentColor"
-                strokeWidth="4"
-              />
-              <path
-                className="opacity-75"
-                fill="currentColor"
-                d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"
-              />
-            </svg>
-            Loading TradingView live feed…
+            <Spinner /> Loading chart…
           </div>
         )}
       </div>

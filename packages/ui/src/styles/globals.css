@@ -48,46 +48,76 @@
     --radius-3xl: calc(var(--radius) * 2.2);
     --radius-4xl: calc(var(--radius) * 2.6);
     --font-sans: var(--font-sans);
+    --font-serif: var(--font-serif);
+    --font-mono: var(--font-mono);
+    /* Argus brand + semantic tokens */
+    --color-brass: var(--brass);
+    --color-brass-foreground: var(--brass-foreground);
+    --color-surface: var(--surface);
+    --color-surface-2: var(--surface-2);
+    --color-buy: var(--buy);
+    --color-sell: var(--sell);
+    --color-hold: var(--hold);
+    --color-success: var(--success);
+    --color-warning: var(--warning);
+    --color-info: var(--info);
 }
 
+/*
+ * Argus design tokens. Every color in the app must come from here (use the
+ * Tailwind utilities: bg-surface, text-brass, text-buy, border-border, …),
+ * never from hex literals in components.
+ */
 :root {
-    --background: oklch(1 0 0);
-    --foreground: oklch(0.145 0 0);
-    --card: oklch(1 0 0);
-    --card-foreground: oklch(0.145 0 0);
-    --popover: oklch(1 0 0);
-    --popover-foreground: oklch(0.145 0 0);
-    --primary: oklch(0.205 0 0);
-    --primary-foreground: oklch(0.985 0 0);
-    --secondary: oklch(0.97 0 0);
-    --secondary-foreground: oklch(0.205 0 0);
-    --muted: oklch(0.97 0 0);
-    --muted-foreground: oklch(0.556 0 0);
-    --accent: oklch(0.97 0 0);
-    --accent-foreground: oklch(0.205 0 0);
-    --destructive: oklch(0.577 0.245 27.325);
-    --border: oklch(0.922 0 0);
-    --input: oklch(0.922 0 0);
-    --ring: oklch(0.708 0 0);
-    --chart-1: oklch(0.87 0 0);
-    --chart-2: oklch(0.556 0 0);
-    --chart-3: oklch(0.439 0 0);
-    --chart-4: oklch(0.371 0 0);
-    --chart-5: oklch(0.269 0 0);
-    --radius: 0.625rem;
-    --sidebar: oklch(0.985 0 0);
-    --sidebar-foreground: oklch(0.145 0 0);
-    --sidebar-primary: oklch(0.205 0 0);
-    --sidebar-primary-foreground: oklch(0.985 0 0);
-    --sidebar-accent: oklch(0.97 0 0);
-    --sidebar-accent-foreground: oklch(0.205 0 0);
-    --sidebar-border: oklch(0.922 0 0);
-    --sidebar-ring: oklch(0.708 0 0);
+    --background: #F7F6F2;
+    --foreground: #15171C;
+    --surface: #FFFFFF;
+    --surface-2: #F0EEE8;
+    --card: #FFFFFF;
+    --card-foreground: #15171C;
+    --popover: #FFFFFF;
+    --popover-foreground: #15171C;
+    --primary: #15171C;
+    --primary-foreground: #F7F6F2;
+    --secondary: #ECEAE3;
+    --secondary-foreground: #15171C;
+    --muted: #ECEAE3;
+    --muted-foreground: #5B6170;
+    --accent: #E6E2D7;
+    --accent-foreground: #15171C;
+    --destructive: #B91C1C;
+    --border: #DDD9CE;
+    --input: #DDD9CE;
+    --ring: rgba(138, 106, 58, 0.45);
+    --brass: #8A6A3A;
+    --brass-foreground: #FFFFFF;
+    --buy: #15803D;
+    --sell: #B91C1C;
+    --hold: #B45309;
+    --success: #15803D;
+    --warning: #B45309;
+    --info: #1D4ED8;
+    --chart-1: var(--buy);
+    --chart-2: var(--sell);
+    --chart-3: var(--hold);
+    --chart-4: var(--brass);
+    --chart-5: #6B7280;
+    --radius: 0.25rem;
+    --sidebar: var(--background);
+    --sidebar-foreground: var(--foreground);
+    --sidebar-primary: var(--primary);
+    --sidebar-primary-foreground: var(--primary-foreground);
+    --sidebar-accent: var(--accent);
+    --sidebar-accent-foreground: var(--accent-foreground);
+    --sidebar-border: var(--border);
+    --sidebar-ring: var(--ring);
 }
 
 .dark {
     --background: #0A0B0D;
     --foreground: #F3F4F6;
+    --surface: #12141A;
+    --surface-2: #181A24;
     --card: #12141A;
     --card-foreground: #F3F4F6;
     --popover: #12141A;
@@ -100,33 +130,41 @@
     --muted-foreground: #9CA3AF;
     --accent: #1C1F2B;
     --accent-foreground: #F3F4F6;
-    --destructive: #DC2626;
+    --destructive: #EF4444;
     --border: #1E222A;
     --input: #1E222A;
-    --ring: rgba(176, 141, 87, 0.4);
+    --ring: rgba(176, 141, 87, 0.45);
     --brass: #B08D57;
-    --chart-1: #16A34A;
-    --chart-2: #DC2626;
-    --chart-3: #D97706;
-    --chart-4: #B08D57;
+    --brass-foreground: #0A0B0D;
+    --buy: #22C55E;
+    --sell: #EF4444;
+    --hold: #F59E0B;
+    --success: #22C55E;
+    --warning: #F59E0B;
+    --info: #60A5FA;
     --chart-5: #9CA3AF;
-    --sidebar: #0A0B0D;
-    --sidebar-foreground: #F3F4F6;
-    --sidebar-primary: #F3F4F6;
-    --sidebar-primary-foreground: #0A0B0D;
-    --sidebar-accent: #181A24;
-    --sidebar-accent-foreground: #F3F4F6;
-    --sidebar-border: #1E222A;
-    --sidebar-ring: rgba(176, 141, 87, 0.4);
-    --accent-glow: #B08D57;
-    --radius: 0.125rem;
 }
 
 @layer base {
   * {
     @apply border-border outline-ring/50;
-    }
+  }
+  html {
+    color-scheme: light;
+  }
+  html.dark {
+    color-scheme: dark;
+  }
   body {
-    @apply bg-background text-foreground;
-    }
+    @apply bg-background text-foreground antialiased;
+  }
+  ::selection {
+    background: color-mix(in oklab, var(--brass) 25%, transparent);
+  }
+}
+
+@layer utilities {
+  .tabular {
+    font-variant-numeric: tabular-nums;
+  }
 }
