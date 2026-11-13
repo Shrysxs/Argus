@@ -39,19 +39,75 @@ model Session {
 }
 
 model AnalyzeResult {
-  id                String   @id @default(uuid())
-  userId            String   @map("user_id")
-  user              User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  id                String            @id @default(uuid())
+  userId            String            @map("user_id")
+  user              User              @relation(fields: [userId], references: [id], onDelete: Cascade)
   asset             String
+  /// complete | degraded | no_quorum (see apps/web/lib/analysis/run-analysis.ts)
+  status            String            @default("complete")
   recommendation    String
   confidence        Float
   breakdown         Json
-  disagreement      Boolean  @default(false)
-  dataSnapshotHash  String   @map("data_snapshot_hash")
-  promptVersionHash String   @map("prompt_version_hash")
-  sealed            Boolean  @default(false)
-  txHash            String?  @map("tx_hash")
-  createdAt         DateTime @default(now()) @map("created_at")
+  disagreement      Boolean           @default(false)
+  responsiveCount   Int               @default(0) @map("responsive_count")
+  rosterSize        Int               @default(5) @map("roster_size")
+  snapshotId        String?           @map("snapshot_id")
+  snapshot          MarketSnapshot?   @relation(fields: [snapshotId], references: [id])
+  dataSnapshotHash  String            @map("data_snapshot_hash")
+  promptVersionHash String            @map("prompt_version_hash")
+  reasoningHash     String?           @map("reasoning_hash")
+  sealed            Boolean           @default(false)
+  txHash            String?           @map("tx_hash")
+  sealedAt          DateTime?         @map("sealed_at")
+  /// backend | client
+  sealedBy          String?           @map("sealed_by")
+  signerAddress     String?           @map("signer_address")
+  createdAt         DateTime          @default(now()) @map("created_at")
+  agentVotes        AgentVoteRecord[]
 
+  @@index([userId, createdAt(sort: Desc)])
+  @@index([sealed, sealedAt(sort: Desc)])
   @@map("analyze_results")
+}
+
+/// Exact market data an analysis was computed from, so its hash can be re-verified.
+model MarketSnapshot {
+  id         String          @id
+  asset      String
+  hash       String
+  data       Json
+  sources    String[]
+  capturedAt DateTime        @map("captured_at")
+  createdAt  DateTime        @default(now()) @map("created_at")
+  analyses   AnalyzeResult[]
+
+  @@index([hash])
+  @@map("market_snapshots")
+}
+
+/// One agent's outcome in one analysis, including failures and raw LLM responses.
+model AgentVoteRecord {
+  id              String        @id @default(uuid())
+  analyzeResultId String        @map("analyze_result_id")
+  analyzeResult   AnalyzeResult @relation(fields: [analyzeResultId], references: [id], onDelete: Cascade)
+  agentId         String        @map("agent_id")
+  /// ok | failed | abstained
+  status          String
+  vote            String?
+  confidence      Float?
+  reasoning       String?
+  dataPointsCited String[]      @map("data_points_cited")
+  promptVersion   String?       @map("prompt_version")
+  promptHash      String?       @map("prompt_hash")
+  modelUsed       String?       @map("model_used")
+  provider        String?
+  temperature     Float?
+  error           String?
+  /// Raw provider attempts (AGENTS.md §5.3: log every raw response, even malformed)
+  attempts        Json          @default("[]")
+  createdAt       DateTime      @default(now()) @map("created_at")
+
+  @@index([analyzeResultId])
+  @@index([agentId, createdAt])
+  @@map("agent_votes")
 }

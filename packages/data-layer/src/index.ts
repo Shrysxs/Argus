@@ -5,7 +5,14 @@ export { fetchSentiment } from "./fetchers/sentiment";
 export { fetchSentimentFallback } from "./fetchers/sentiment-fallback";
 export { fetchOnchainMetrics } from "./fetchers/onchain-metrics";
 export { getCoinUniverse, resolveCoinId, STATIC_COINS_LIST } from "./fetchers/coins";
-export { sha256 } from "./hash";
+export { sha256, computePromptVersionHash, computeReasoningHash } from "./hash";
+export {
+  canonicalJson,
+  canonicalize,
+  promptCommitmentPayload,
+  reasoningCommitmentPayload,
+} from "./canonical";
+export type { PromptCommitment, ReasoningCommitment } from "./canonical";
 export { TtlCache } from "./cache";
 export { DataFetchError, NotImplementedError } from "./errors";
 
