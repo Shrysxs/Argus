@@ -94,6 +94,10 @@ npx prisma migrate resolve --applied 0_init
 npx prisma migrate deploy
 ```
 
+On Vercel, `apps/web` uses the `vercel-build` script, which runs `prisma migrate deploy` before `next build`. Until the
+baseline above has been done, that build fails on purpose and Vercel keeps serving the previous deployment — it never
+ships code against an un-migrated database.
+
 Note: migration `6_hashed_session_tokens` signs everyone out once, and `5_credits_cents_ledger` converts balances to
 integer cents with an opening-balance ledger entry per user.
 
