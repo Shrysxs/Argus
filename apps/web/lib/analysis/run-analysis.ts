@@ -7,6 +7,7 @@ import {
 } from "@argus/data-layer";
 import type { AgentRunResult, AgentVote, VoteDirection } from "@argus/shared-types";
 import { db } from "@/lib/db";
+import { buildSealPayload, isSealable } from "./seal-payload";
 import type { AgentOutcome, AnalysisEvent, AnalysisResponse, AnalysisStatus } from "./types";
 
 /** Minimum responsive agents for a sealable consensus (3 of 5). */
@@ -127,6 +128,7 @@ export async function runAnalysis({ userId, asset, onEvent, deps = {} }: RunAnal
     reasoningHash,
     snapshot,
     createdAt: record.createdAt.toISOString(),
+    sealPayload: isSealable(record) ? buildSealPayload(record) : null,
   };
   onEvent?.({ type: "result", result: response });
   return response;

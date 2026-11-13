@@ -67,6 +67,9 @@ function createMockProvider(overrides: Record<string, any> = {}) {
           currentChainId = params?.[0]?.chainId || MONAD_TESTNET_HEX_CHAIN_ID;
           return null;
 
+        case "eth_getTransactionReceipt":
+          return { status: overrides.revertTx ? "0x0" : "0x1" };
+
         case "eth_sendTransaction":
           if (overrides.rejectTxSignature) {
             throw { code: 4001, message: "User rejected transaction signature" };
@@ -181,6 +184,11 @@ describe("Client-Side Wallet Connect & Client-Signed Sealing Suite", () => {
     assert.ok(typeof sentTx.data === "string" && sentTx.data.startsWith("0x"));
   });
 
+  test("5b. Reverted transaction surfaces loudly instead of reporting success", async () => {
+    const adapter = new BrowserMonadChainAdapter({ ethereumProvider: createMockProvider({ revertTx: true }) });
+    await assert.rejects(() => adapter.recordDecision(mockPayload), /Transaction reverted/);
+  });
+
   test("6. Client-side sanity checks: rejects malformed payload prior to wallet prompt", async () => {
     const mockProvider = createMockProvider();
     const adapter = new BrowserMonadChainAdapter({ ethereumProvider: mockProvider });
@@ -193,7 +201,7 @@ describe("Client-Side Wallet Connect & Client-Signed Sealing Suite", () => {
           dataSnapshotHash: "invalid-hash",
         });
       },
-      /Invalid bytes32 hash string for dataSnapshotHash/
+      /Invalid bytes32 hash for dataSnapshotHash/
     );
 
     // Invalid confidence

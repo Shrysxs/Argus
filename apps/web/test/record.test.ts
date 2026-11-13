@@ -1,112 +1,161 @@
-import { test, describe, beforeEach } from "node:test";
+import { test, describe, before, after, beforeEach } from "node:test";
 import assert from "node:assert/strict";
-import type { DecisionPayload } from "@argus/shared-types";
+import type { DecisionPayload, VerifiedDecision } from "@argus/shared-types";
 import { MonadChainAdapter } from "@argus/chain-adapters";
-
-const validBytes32Hash = "0x1111111111111111111111111111111111111111111111111111111111111111";
-
-const mockPayload: DecisionPayload = {
-  asset: "BTC",
-  timestamp: 1700000000000,
-  consensus: {
-    recommendation: "BUY",
-    confidence: 85.5,
-    breakdown: { BUY: 85.5, SELL: 0, HOLD: 14.5 },
-    disagreement: false,
-    agentVotes: [],
-  },
-  dataSnapshotHash: validBytes32Hash,
-  promptVersionHash: validBytes32Hash,
-  reasoningHash: validBytes32Hash,
-};
-
 import { POST as recordHandler } from "../app/api/record/route";
+import { db } from "../lib/db";
+import { createSession } from "../lib/auth/session";
+import { setChainAdapterForTests } from "../lib/chain";
+import { resetRateLimit } from "../lib/auth/rate-limit";
+import { buildSealPayload } from "../lib/analysis/seal-payload";
 
-describe("POST /api/record Decision Sealing & Error Surfacing", () => {
-  test("Unauthenticated request: returns 401 Unauthorized status", async () => {
-    const req = new Request("http://localhost:3000/api/record", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(mockPayload),
+const TX = `0x${"e5".repeat(32)}`;
+const TX2 = `0x${"f6".repeat(32)}`;
+
+class FakeAdapter extends MonadChainAdapter {
+  recorded: DecisionPayload[] = [];
+  verifyResult: "ok" | "mismatch" = "ok";
+  failRecord = false;
+  constructor(private configured = true) {
+    super({ signerPrivateKey: "" });
+  }
+  override get signerConfigured() {
+    return this.configured;
+  }
+  override async recordDecision(p: DecisionPayload) {
+    if (this.failRecord) throw new Error("On-chain transaction reverted: 0xdead");
+    this.recorded.push(p);
+    return { txHash: TX };
+  }
+  override async verifyDecision(txHash: string, _p: DecisionPayload): Promise<VerifiedDecision> {
+    if (this.verifyResult === "mismatch") throw new Error("Transaction does not contain a DecisionRecorded event matching this analysis");
+    return { txHash, sender: "0x00000000000000000000000000000000000000aa", blockNumber: "7" };
+  }
+}
+
+function req(body: unknown, session?: string) {
+  return new Request("http://localhost/api/record", {
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...(session ? { cookie: `argus_session=${session}` } : {}) },
+    body: JSON.stringify(body),
+  });
+}
+
+describe("POST /api/record", () => {
+  let userId: string;
+  let otherUserId: string;
+  let session: string;
+  let adapter: FakeAdapter;
+
+  async function makeAnalysis(overrides: Record<string, unknown> = {}, owner = userId) {
+    return db.analyzeResult.create({
+      data: {
+        userId: owner,
+        asset: "BTC",
+        status: "complete",
+        recommendation: "BUY",
+        confidence: 71.25,
+        breakdown: { BUY: 285, SELL: 0, HOLD: 115 },
+        responsiveCount: 5,
+        dataSnapshotHash: "11".repeat(32),
+        promptVersionHash: "22".repeat(32),
+        reasoningHash: "33".repeat(32),
+        ...overrides,
+      },
     });
+  }
 
-    const res = await recordHandler(req);
-    assert.strictEqual(res.status, 401);
-    const body = await res.json();
-    assert.strictEqual(body.error, "Unauthorized");
+  before(async () => {
+    await db.user.deleteMany({ where: { email: { in: ["record_a@argus.test", "record_b@argus.test"] } } });
+    userId = (await db.user.create({ data: { email: "record_a@argus.test", passwordHash: "x" } })).id;
+    otherUserId = (await db.user.create({ data: { email: "record_b@argus.test", passwordHash: "x" } })).id;
+    session = await createSession(userId);
   });
 
-  test("Successful record call with mocked ChainAdapter: returns txHash without spending testnet MON", async () => {
-    // Instantiate adapter with mock recordDecision
-    const mockTxHash = "0xe5d450f98da7c47ce05a82bc1ae23ffbb268fcc52869cc14989aaa8ebdc6d865";
-    
-    class TestMonadAdapter extends MonadChainAdapter {
-      override async recordDecision(input: DecisionPayload): Promise<{ txHash: string }> {
-        assert.strictEqual(input.asset, "BTC");
-        assert.strictEqual(input.consensus.recommendation, "BUY");
-        assert.strictEqual(input.consensus.confidence, 85.5);
-        assert.strictEqual(input.dataSnapshotHash, validBytes32Hash);
-        assert.strictEqual(input.promptVersionHash, validBytes32Hash);
-        return { txHash: mockTxHash };
-      }
-    }
-
-    const adapter = new TestMonadAdapter();
-    const result = await adapter.recordDecision(mockPayload);
-
-    assert.strictEqual(result.txHash, mockTxHash);
-    assert.match(result.txHash, /^0x[0-9a-fA-F]{64}$/);
+  beforeEach(async () => {
+    await db.analyzeResult.deleteMany({ where: { userId: { in: [userId, otherUserId] } } });
+    adapter = new FakeAdapter();
+    setChainAdapterForTests(adapter);
+    resetRateLimit(`record:${userId}`);
   });
 
-  test("On-chain failure case (revert/RPC error): surfaces error loud rather than swallowing", async () => {
-    const revertErrorMessage = "On-chain transaction reverted: PenguinRegistry: confidence exceeds 10000 bps";
+  after(() => setChainAdapterForTests(null));
 
-    class FailingMonadAdapter extends MonadChainAdapter {
-      override async recordDecision(_input: DecisionPayload): Promise<{ txHash: string }> {
-        throw new Error(revertErrorMessage);
-      }
-    }
-
-    const adapter = new FailingMonadAdapter();
-
-    await assert.rejects(
-      async () => {
-        await adapter.recordDecision(mockPayload);
-      },
-      (err: unknown) => {
-        assert.ok(err instanceof Error);
-        assert.strictEqual(err.message, revertErrorMessage);
-        return true;
-      }
-    );
+  test("401 when unauthenticated", async () => {
+    const res = await recordHandler(req({ id: "x" }));
+    assert.equal(res.status, 401);
   });
 
-  test("Validation rules: rejects malformed bytes32, missing id, or invalid confidence", () => {
-    const adapter = new MonadChainAdapter();
-
-    // Malformed bytes32 hash
-    assert.rejects(
-      async () => {
-        await adapter.recordDecision({
-          ...mockPayload,
-          dataSnapshotHash: "invalid-hash",
-        });
-      },
-      /Invalid bytes32 hash string/
+  test("backend seal uses the stored row, ignoring tampered client fields", async () => {
+    const row = await makeAnalysis();
+    const res = await recordHandler(
+      req({ id: row.id, consensus: { recommendation: "SELL", confidence: 99 }, dataSnapshotHash: "ff".repeat(32) }, session),
     );
+    assert.equal(res.status, 200);
+    assert.equal(adapter.recorded.length, 1);
+    assert.deepEqual(adapter.recorded[0], buildSealPayload(row));
+    assert.equal(adapter.recorded[0]!.consensus.recommendation, "BUY");
 
-    // Invalid confidence (> 100)
-    assert.rejects(
-      async () => {
-        await adapter.recordDecision({
-          ...mockPayload,
-          consensus: {
-            ...mockPayload.consensus,
-            confidence: 150,
-          },
-        });
-      },
-      /confidence must be a number between 0 and 100/
-    );
+    const after = await db.analyzeResult.findUniqueOrThrow({ where: { id: row.id } });
+    assert.equal(after.sealed, true);
+    assert.equal(after.sealedBy, "backend");
+    assert.equal(after.txHash, TX);
+  });
+
+  test("client tx hash is verified on-chain before sealing", async () => {
+    const row = await makeAnalysis();
+    adapter.verifyResult = "mismatch";
+    const bad = await recordHandler(req({ id: row.id, txHash: TX2 }, session));
+    assert.equal(bad.status, 422);
+    assert.equal((await db.analyzeResult.findUniqueOrThrow({ where: { id: row.id } })).sealed, false);
+
+    adapter.verifyResult = "ok";
+    const good = await recordHandler(req({ id: row.id, txHash: TX2 }, session));
+    assert.equal(good.status, 200);
+    const sealed = await db.analyzeResult.findUniqueOrThrow({ where: { id: row.id } });
+    assert.equal(sealed.sealedBy, "client");
+    assert.equal(sealed.signerAddress, "0x00000000000000000000000000000000000000aa");
+  });
+
+  test("a tx hash cannot be reused for a second analysis", async () => {
+    const a = await makeAnalysis();
+    const b = await makeAnalysis();
+    assert.equal((await recordHandler(req({ id: a.id, txHash: TX2 }, session))).status, 200);
+    assert.equal((await recordHandler(req({ id: b.id, txHash: TX2 }, session))).status, 409);
+  });
+
+  test("cannot seal twice, another user's analysis, or a no-quorum analysis", async () => {
+    const row = await makeAnalysis();
+    assert.equal((await recordHandler(req({ id: row.id }, session))).status, 200);
+    assert.equal((await recordHandler(req({ id: row.id }, session))).status, 409);
+
+    const foreign = await makeAnalysis({}, otherUserId);
+    assert.equal((await recordHandler(req({ id: foreign.id }, session))).status, 404);
+
+    const noQuorum = await makeAnalysis({ status: "no_quorum", recommendation: "NONE", confidence: 0 });
+    assert.equal((await recordHandler(req({ id: noQuorum.id }, session))).status, 422);
+  });
+
+  test("rejects malformed tx hashes and missing ids", async () => {
+    const row = await makeAnalysis();
+    assert.equal((await recordHandler(req({ id: row.id, txHash: "0x1234" }, session))).status, 400);
+    assert.equal((await recordHandler(req({}, session))).status, 400);
+  });
+
+  test("503 when backend signer is not configured", async () => {
+    setChainAdapterForTests(new FakeAdapter(false));
+    const row = await makeAnalysis();
+    assert.equal((await recordHandler(req({ id: row.id }, session))).status, 503);
+  });
+
+  test("chain failure surfaces loudly and releases the claim for retry", async () => {
+    const row = await makeAnalysis();
+    adapter.failRecord = true;
+    const res = await recordHandler(req({ id: row.id }, session));
+    assert.equal(res.status, 502);
+    assert.match((await res.json()).error, /reverted/);
+    const after = await db.analyzeResult.findUniqueOrThrow({ where: { id: row.id } });
+    assert.equal(after.sealed, false);
+    assert.equal(after.sealedBy, null);
   });
 });

@@ -8,7 +8,7 @@ export { MIN_RESPONSIVE_AGENTS };
 export const maxDuration = 120;
 
 export async function POST(req: Request) {
-  const user = await getSessionUser();
+  const user = await getSessionUser(req);
   if (!user) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }

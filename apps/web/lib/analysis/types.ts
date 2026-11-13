@@ -1,5 +1,6 @@
 import type {
   AgentRunStatus,
+  DecisionPayload,
   AgentVote,
   MarketDataSnapshot,
   VoteDirection,
@@ -36,6 +37,8 @@ export interface AnalysisResponse {
   reasoningHash: string;
   snapshot: MarketDataSnapshot;
   createdAt: string;
+  /** Exact payload to sign when sealing (null when not sealable). */
+  sealPayload: DecisionPayload | null;
 }
 
 /** Events emitted while an analysis runs (streamed to the UI over SSE). */

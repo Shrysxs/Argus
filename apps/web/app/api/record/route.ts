@@ -1,149 +1,136 @@
 import { NextResponse } from "next/server";
 import { getSessionUser } from "@/lib/auth/session";
 import { checkRateLimit, recordFailedAttempt } from "@/lib/auth/rate-limit";
-import { monadChainAdapter } from "@argus/chain-adapters";
-import type { DecisionPayload } from "@argus/shared-types";
+import { db } from "@/lib/db";
+import { getChainAdapter, explorerTxUrl } from "@/lib/chain";
+import { buildSealPayload, isSealable } from "@/lib/analysis/seal-payload";
 
-// Maximum on-chain recording attempts per user in 15 min window
-const RECORD_MAX_ATTEMPTS = 3;
+export const maxDuration = 90;
 
+const RECORD_MAX_ATTEMPTS = 10;
+const BACKEND_PENDING = "backend_pending";
+
+/**
+ * Seal a stored analysis on-chain.
+ *
+ * Body: { id: string, txHash?: string }
+ *  - Without txHash, the backend relayer signs and sends the transaction.
+ *  - With txHash (user-signed in their wallet), the transaction is fetched
+ *    from the chain and its DecisionRecorded event must match the stored
+ *    analysis exactly before the record is marked sealed.
+ *
+ * The sealed values always come from the database row, never the request.
+ */
 export async function POST(req: Request) {
-  // 1. Auth check (401 if not logged in)
-  const user = await getSessionUser();
+  const user = await getSessionUser(req);
   if (!user) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  // 2. Tighter rate-limit check per user
   const rateLimitKey = `record:${user.id}`;
   const limitCheck = checkRateLimit(rateLimitKey, RECORD_MAX_ATTEMPTS);
   if (!limitCheck.allowed) {
     return NextResponse.json(
-      {
-        error: "Rate limit exceeded for on-chain recording. Please try again later.",
-        retryAfterSeconds: limitCheck.retryAfterSeconds,
-      },
-      { status: 429 }
+      { error: "Rate limit exceeded for on-chain recording. Please try again later.", retryAfterSeconds: limitCheck.retryAfterSeconds },
+      { status: 429 },
+    );
+  }
+  recordFailedAttempt(rateLimitKey);
+
+  const body = (await req.json().catch(() => null)) as { id?: unknown; txHash?: unknown } | null;
+  const id = typeof body?.id === "string" ? body.id.trim() : "";
+  if (!id) {
+    return NextResponse.json({ error: "Invalid payload: analysis id is required" }, { status: 400 });
+  }
+  const clientTxHash = body?.txHash;
+  if (clientTxHash !== undefined && (typeof clientTxHash !== "string" || !/^0x[0-9a-fA-F]{64}$/.test(clientTxHash))) {
+    return NextResponse.json({ error: "Invalid payload: txHash must be a 32-byte hex string" }, { status: 400 });
+  }
+
+  const row = await db.analyzeResult.findFirst({ where: { id, userId: user.id } });
+  if (!row) {
+    return NextResponse.json({ error: "Analysis not found" }, { status: 404 });
+  }
+  if (row.sealed) {
+    return NextResponse.json({ error: "Analysis is already sealed on-chain", txHash: row.txHash }, { status: 409 });
+  }
+  if (!isSealable(row)) {
+    return NextResponse.json(
+      { error: "This analysis did not reach quorum and cannot be sealed" },
+      { status: 422 },
     );
   }
 
-  // Record attempt for rate limiting
-  recordFailedAttempt(rateLimitKey);
+  const payload = buildSealPayload(row);
+  const adapter = getChainAdapter();
 
   try {
-    const body = (await req.json().catch(() => null)) as DecisionPayload | null;
-    if (!body || typeof body !== "object") {
+    if (typeof clientTxHash === "string") {
+      const reused = await db.analyzeResult.findFirst({ where: { txHash: clientTxHash.toLowerCase() } });
+      if (reused) {
+        return NextResponse.json({ error: "This transaction is already linked to another analysis" }, { status: 409 });
+      }
+
+      let verified;
+      try {
+        verified = await adapter.verifyDecision(clientTxHash, payload);
+      } catch (err) {
+        return NextResponse.json(
+          { error: `Transaction verification failed: ${err instanceof Error ? err.message : String(err)}` },
+          { status: 422 },
+        );
+      }
+
+      const updated = await db.analyzeResult.updateMany({
+        where: { id, userId: user.id, sealed: false },
+        data: {
+          sealed: true,
+          txHash: clientTxHash.toLowerCase(),
+          sealedAt: new Date(),
+          sealedBy: "client",
+          signerAddress: verified.sender,
+        },
+      });
+      if (updated.count === 0) {
+        return NextResponse.json({ error: "Analysis was sealed concurrently" }, { status: 409 });
+      }
+      return NextResponse.json({ txHash: clientTxHash.toLowerCase(), explorerUrl: explorerTxUrl(clientTxHash), signer: verified.sender });
+    }
+
+    if (!adapter.signerConfigured) {
       return NextResponse.json(
-        { error: "Invalid payload: body must be a JSON object" },
-        { status: 400 }
+        { error: "Backend signer is not configured. Connect a wallet to seal with your own signature." },
+        { status: 503 },
       );
     }
 
-    const asset = typeof body.asset === "string" ? body.asset.trim().toUpperCase() : "";
-    if (!asset) {
-      return NextResponse.json(
-        { error: "Invalid payload: asset must not be empty" },
-        { status: 400 }
-      );
-    }
-
-    const recommendation = body.consensus?.recommendation;
-    if (!recommendation || !["BUY", "SELL", "HOLD"].includes(recommendation)) {
-      return NextResponse.json(
-        { error: "Invalid payload: recommendation must be BUY, SELL, or HOLD" },
-        { status: 400 }
-      );
-    }
-
-    const confidence = body.consensus?.confidence;
-    if (typeof confidence !== "number" || isNaN(confidence) || confidence < 0 || confidence > 100) {
-      return NextResponse.json(
-        { error: "Invalid payload: confidence must be a number between 0 and 100" },
-        { status: 400 }
-      );
-    }
-
-    const dataSnapshotHash = body.dataSnapshotHash;
-    if (!dataSnapshotHash || typeof dataSnapshotHash !== "string") {
-      return NextResponse.json(
-        { error: "Invalid payload: dataSnapshotHash is required" },
-        { status: 400 }
-      );
-    }
-
-    const promptVersionHash = body.promptVersionHash || body.reasoningHash;
-    if (!promptVersionHash || typeof promptVersionHash !== "string") {
-      return NextResponse.json(
-        { error: "Invalid payload: promptVersionHash or reasoningHash is required" },
-        { status: 400 }
-      );
-    }
-
-    const recordId = typeof (body as any).id === "string" ? (body as any).id.trim() : "";
-    if (!recordId) {
-      return NextResponse.json(
-        { error: "Invalid payload: analyze result id is required" },
-        { status: 400 }
-      );
-    }
-
-    // Pre-sealing DB existence & unsealed state validation
-    const { db } = await import("@/lib/db");
-    const existingRecord = await db.analyzeResult.findFirst({
-      where: { id: recordId, userId: user.id, sealed: false },
+    // Claim the row so two concurrent requests cannot both send a transaction.
+    const claimed = await db.analyzeResult.updateMany({
+      where: { id, userId: user.id, sealed: false, sealedBy: null },
+      data: { sealedBy: BACKEND_PENDING },
     });
-
-    if (!existingRecord) {
-      return NextResponse.json(
-        { error: "Analysis record not found, unauthorized, or already sealed on-chain" },
-        { status: 404 }
-      );
+    if (claimed.count === 0) {
+      return NextResponse.json({ error: "A seal for this analysis is already in progress" }, { status: 409 });
     }
 
-    // Prepare clean DecisionPayload
-    const payload: DecisionPayload = {
-      asset,
-      timestamp: body.timestamp || Date.now(),
-      consensus: body.consensus,
-      dataSnapshotHash,
-      promptVersionHash,
-      reasoningHash: body.reasoningHash || promptVersionHash,
-    };
-
-    let finalTxHash = "";
-
-    // If client already signed on-chain and sent txHash in body, use it directly
-    if (typeof (body as any).txHash === "string" && (body as any).txHash.startsWith("0x")) {
-      finalTxHash = (body as any).txHash;
-    } else {
-      // 3. Record decision on-chain via Monad ChainAdapter (Backend Signed)
-      const result = await monadChainAdapter.recordDecision(payload);
-      finalTxHash = result.txHash;
+    let txHash: string;
+    try {
+      ({ txHash } = await adapter.recordDecision(payload));
+    } catch (err) {
+      await db.analyzeResult.updateMany({ where: { id, sealedBy: BACKEND_PENDING }, data: { sealedBy: null } });
+      throw err;
     }
 
-    // Update DB history row to reflect on-chain sealed state (AGENTS.md & BACKEND.md)
-    const updateResult = await db.analyzeResult.updateMany({
-      where: { id: recordId, userId: user.id, sealed: false },
-      data: { sealed: true, txHash: finalTxHash },
+    await db.analyzeResult.update({
+      where: { id },
+      data: { sealed: true, txHash: txHash.toLowerCase(), sealedAt: new Date(), sealedBy: "backend" },
     });
-
-    if (updateResult.count === 0) {
-      return NextResponse.json(
-        { error: "Failed to update analysis record: record missing or already sealed" },
-        { status: 409 }
-      );
-    }
-
-    return NextResponse.json({
-      txHash: finalTxHash,
-      explorerUrl: `https://testnet.monadexplorer.com/tx/${finalTxHash}`,
-    });
+    return NextResponse.json({ txHash, explorerUrl: explorerTxUrl(txHash) });
   } catch (err: unknown) {
     console.error("API /api/record execution error:", err);
-    const errorMessage = err instanceof Error ? err.message : "On-chain record failed";
     return NextResponse.json(
-      { error: errorMessage },
-      { status: 500 }
+      { error: err instanceof Error ? err.message : "On-chain record failed" },
+      { status: 502 },
     );
   }
 }

@@ -57,7 +57,7 @@ model AnalyzeResult {
   promptVersionHash String            @map("prompt_version_hash")
   reasoningHash     String?           @map("reasoning_hash")
   sealed            Boolean           @default(false)
-  txHash            String?           @map("tx_hash")
+  txHash            String?           @unique @map("tx_hash")
   sealedAt          DateTime?         @map("sealed_at")
   /// backend | client
   sealedBy          String?           @map("sealed_by")
