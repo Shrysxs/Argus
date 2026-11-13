@@ -18,6 +18,7 @@ import {
   explorerTxUrl,
 } from "./registry";
 
+export { createMonadPublicClient, verifyDecisionTx } from "./verify";
 export {
   DEFAULT_MONAD_REGISTRY_ADDRESS,
   MONAD_TESTNET_CHAIN_ID,

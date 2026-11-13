@@ -18,5 +18,9 @@
     "@workspace/typescript-config": "*",
     "tsx": "^4",
     "typescript": "^5"
+  },
+  "exports": {
+    ".": "./src/index.ts",
+    "./prompts": "./src/prompts.generated.ts"
   }
 }

@@ -1,11 +1,4 @@
-import {
-  createPublicClient,
-  createWalletClient,
-  http,
-  parseEventLogs,
-  type Hex,
-  type PublicClient,
-} from "viem";
+import { createWalletClient, http, type Hex, type PublicClient } from "viem";
 import { privateKeyToAccount, type PrivateKeyAccount } from "viem/accounts";
 import { monadTestnet } from "viem/chains";
 import type {
@@ -24,6 +17,7 @@ import {
   decisionArgs,
   encodeDecision,
 } from "./registry";
+import { createMonadPublicClient, verifyDecisionTx } from "./verify";
 
 export interface MonadChainAdapterConfig {
   registryAddress?: string;
@@ -59,7 +53,7 @@ export class MonadChainAdapter implements ChainAdapter {
   }
 
   protected get publicClient(): PublicClient {
-    this._public ??= createPublicClient({ chain: monadTestnet, transport: http(this.rpcUrl) }) as PublicClient;
+    this._public ??= createMonadPublicClient(this.rpcUrl);
     return this._public;
   }
 
@@ -105,29 +99,7 @@ export class MonadChainAdapter implements ChainAdapter {
    * DecisionRecorded event matches `expected` exactly. Throws otherwise.
    */
   async verifyDecision(txHash: string, expected: DecisionPayload): Promise<VerifiedDecision> {
-    if (!/^0x[0-9a-fA-F]{64}$/.test(txHash)) throw new Error("Invalid transaction hash");
-    const want = encodeDecision(expected);
-
-    const receipt = await this.publicClient.getTransactionReceipt({ hash: txHash as Hex }).catch(() => null);
-    if (!receipt) throw new Error("Transaction not found or not yet mined");
-    if (receipt.status !== "success") throw new Error("Transaction reverted");
-
-    const events = parseEventLogs({ abi: REGISTRY_ABI, logs: receipt.logs, eventName: "DecisionRecorded" }).filter(
-      (l) => l.address.toLowerCase() === this.registryAddress.toLowerCase(),
-    );
-    const match = events.find(
-      (e) =>
-        e.args.asset === want.asset &&
-        e.args.decision === want.decision &&
-        e.args.confidence === want.confidenceBps &&
-        e.args.dataSnapshotHash.toLowerCase() === want.dataSnapshotHash &&
-        e.args.promptVersionHash.toLowerCase() === want.promptVersionHash &&
-        e.args.timestamp === want.timestampSec,
-    );
-    if (!match) {
-      throw new Error("Transaction does not contain a DecisionRecorded event matching this analysis");
-    }
-    return { txHash, sender: match.args.sender, blockNumber: receipt.blockNumber.toString() };
+    return verifyDecisionTx(this.publicClient, this.registryAddress, txHash, expected);
   }
 
   async getDecisionLogs(filter: LogFilter = {}): Promise<DecisionRecord[]> {

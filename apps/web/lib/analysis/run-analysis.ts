@@ -1,6 +1,7 @@
 import { runSyndicateDetailed, AGENT_ROSTER } from "@argus/agents";
 import { computeConsensus } from "@argus/consensus";
 import {
+  canonicalJson,
   fetchSnapshot,
   computePromptVersionHash,
   computeReasoningHash,
@@ -73,6 +74,7 @@ export async function runAnalysis({ userId, asset, onEvent, deps = {} }: RunAnal
         asset: snapshot.asset,
         hash: snapshot.hash,
         data: snapshot.data as object,
+        canonical: canonicalJson(snapshot.data),
         sources: snapshot.sources,
         capturedAt: new Date(snapshot.timestamp),
       },

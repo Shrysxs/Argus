@@ -18,7 +18,7 @@ import { HashText } from "@/components/hash-text";
 import { AGENT_ROSTER } from "@/lib/agents";
 import { ApiError, streamAnalysis } from "@/lib/api";
 import type { AgentOutcome, AnalysisResponse } from "@/lib/analysis/types";
-import { SealPanel } from "./seal-panel";
+import { SealPanel } from "@/components/seal-panel";
 
 type RunState =
   | { status: "idle" }

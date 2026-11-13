@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import { ExternalLink, ShieldCheck } from "lucide-react";
 import type { DecisionPayload } from "@argus/shared-types";
 import { explorerTxUrl } from "@argus/chain-adapters/browser";
@@ -17,6 +18,7 @@ export function SealPanel({ analysisId, payload }: { analysisId: string; payload
   const [busy, setBusy] = useState<string | null>(null);
   const [txHash, setTxHash] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const router = useRouter();
 
   async function seal() {
     setError(null);
@@ -29,10 +31,12 @@ export function SealPanel({ analysisId, payload }: { analysisId: string; payload
         setBusy("Verifying on-chain…");
         await sealAnalysis(analysisId, hash);
         setTxHash(hash);
+        router.refresh();
       } else {
         setBusy("Submitting via relayer…");
         const res = await sealAnalysis(analysisId);
         setTxHash(res.txHash);
+        router.refresh();
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : "Sealing failed");

@@ -75,7 +75,10 @@ model MarketSnapshot {
   id         String          @id
   asset      String
   hash       String
+  /// For querying/display only — JSON numbers may lose precision through the ORM.
   data       Json
+  /// The exact canonical JSON bytes that were hashed into `hash`. Verify against this.
+  canonical  String?         @map("canonical_json")
   sources    String[]
   capturedAt DateTime        @map("captured_at")
   createdAt  DateTime        @default(now()) @map("created_at")
