@@ -20,6 +20,7 @@
   },
   "exports": {
     ".": "./src/index.ts",
-    "./canonical": "./src/canonical.ts"
+    "./canonical": "./src/canonical.ts",
+    "./coins": "./src/fetchers/coins.ts"
   }
 }

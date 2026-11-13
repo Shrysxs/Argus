@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useRef, useEffect, useMemo, useCallback } from "react";
-import { STATIC_COINS_LIST, type CoinInfo } from "@argus/data-layer";
+import { STATIC_COINS_LIST, type CoinInfo } from "@argus/data-layer/coins";
 
 interface AssetSelectorProps {
   value: string;

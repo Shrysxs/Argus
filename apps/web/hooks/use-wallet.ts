@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { createContext, createElement, useContext, useState, useEffect, useCallback, type ReactNode } from "react";
 import {
   BrowserMonadChainAdapter,
   MONAD_TESTNET_CHAIN_ID,
@@ -20,7 +20,7 @@ export interface WalletState {
 
 const defaultAdapter = new BrowserMonadChainAdapter();
 
-export function useWallet(
+function useWalletState(
   customAdapter: BrowserMonadChainAdapter = defaultAdapter
 ): WalletState {
   const [address, setAddress] = useState<string | null>(null);
@@ -137,4 +137,18 @@ export function useWallet(
     switchNetwork,
     adapter: customAdapter,
   };
+}
+
+const WalletContext = createContext<WalletState | null>(null);
+
+/** Single wallet state shared by the header and every page. */
+export function WalletProvider({ children }: { children: ReactNode }) {
+  const state = useWalletState();
+  return createElement(WalletContext.Provider, { value: state }, children);
+}
+
+export function useWallet(): WalletState {
+  const ctx = useContext(WalletContext);
+  if (!ctx) throw new Error("useWallet must be used inside <WalletProvider>");
+  return ctx;
 }

@@ -107,3 +107,18 @@ describe("runAnalysis persistence", () => {
     assert.equal(res.sealable, false);
   });
 });
+
+describe("POST /api/analyze streaming", () => {
+  test("returns 401 before opening a stream when unauthenticated", async () => {
+    const { POST } = await import("../app/api/analyze/route");
+    const res = await POST(
+      new Request("http://localhost/api/analyze", {
+        method: "POST",
+        headers: { Accept: "text/event-stream", "Content-Type": "application/json" },
+        body: "{}",
+      }),
+    );
+    assert.equal(res.status, 401);
+    assert.match(res.headers.get("content-type") ?? "", /json/);
+  });
+});

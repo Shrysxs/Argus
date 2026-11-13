@@ -43,7 +43,8 @@ function build(name: ProviderName, apiKey: string, env: Env): ProviderConfig {
     case "openai":
       return {
         name,
-        endpoint: "https://api.openai.com/v1/chat/completions",
+        // OPENAI_BASE_URL allows any OpenAI-compatible server (Azure, vLLM, Ollama, …).
+        endpoint: `${(env.OPENAI_BASE_URL || "https://api.openai.com/v1").replace(/\/$/, "")}/chat/completions`,
         headers: auth,
         modelFor: () => env.OPENAI_MODEL || "gpt-4.1-mini",
       };
