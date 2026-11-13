@@ -2,9 +2,9 @@
 pragma solidity ^0.8.24;
 
 import {Script, console} from "forge-std/Script.sol";
-import {PenguinRegistry} from "../src/PenguinRegistry.sol";
+import {ArgusRegistry} from "../src/ArgusRegistry.sol";
 
-/// @title Deploy — PenguinRegistry deploy script (ONCHAIN.md §6)
+/// @title Deploy — ArgusRegistry deploy script (ONCHAIN.md §6)
 ///
 /// Keystore-only usage:
 ///   forge script script/Deploy.s.sol \
@@ -14,14 +14,14 @@ import {PenguinRegistry} from "../src/PenguinRegistry.sol";
 ///
 /// After deployment, copy the printed address into .env and apps/web/.env as MONAD_REGISTRY_ADDRESS.
 contract Deploy is Script {
-    function run() external returns (PenguinRegistry registry) {
-        console.log("=== PenguinRegistry Deploy ===");
+    function run() external returns (ArgusRegistry registry) {
+        console.log("=== ArgusRegistry Deploy ===");
         console.log("Deployer:  ", msg.sender);
         console.log("Chain ID:  ", block.chainid);
         console.log("RPC:        Monad testnet (10143)");
 
         vm.startBroadcast();
-        registry = new PenguinRegistry();
+        registry = new ArgusRegistry();
         vm.stopBroadcast();
 
         console.log("Contract:  ", address(registry));

@@ -1,66 +1,55 @@
-## Foundry
+# Argus contracts
 
-**Foundry is a blazing fast, portable and modular toolkit for Ethereum application development written in Rust.**
+`ArgusRegistry` is the on-chain anchor for Argus decisions. It is intentionally boring:
+it validates a payload, emits one event and returns. **It holds no state and no funds**
+and has no owner or admin functions — small enough to audit in an afternoon.
 
-Foundry consists of:
+```solidity
+function recordDecision(
+    string asset,               // "BTC"
+    string decision,            // "BUY" | "SELL" | "HOLD"
+    uint256 confidence,         // basis points, 0–10000
+    bytes32 dataSnapshotHash,   // sha256(canonical(snapshot.data))
+    bytes32 promptVersionHash,  // sha256 of the prompt-version commitment
+    uint256 timestamp           // unix seconds
+) external;
 
-- **Forge**: Ethereum testing framework (like Truffle, Hardhat and DappTools).
-- **Cast**: Swiss army knife for interacting with EVM smart contracts, sending transactions and getting chain data.
-- **Anvil**: Local Ethereum node, akin to Ganache, Hardhat Network.
-- **Chisel**: Fast, utilitarian, and verbose solidity REPL.
-
-## Documentation
-
-https://book.getfoundry.sh/
-
-## Usage
-
-### Build
-
-```shell
-$ forge build
+event DecisionRecorded(
+    string asset, string decision, uint256 confidence,
+    bytes32 dataSnapshotHash, bytes32 promptVersionHash,
+    uint256 timestamp, address indexed sender
+);
 ```
 
-### Test
+How the hashes are built and how to verify a decision end-to-end is documented on the
+app's `/methodology` page and in [`../ONCHAIN.md`](../ONCHAIN.md).
 
-```shell
-$ forge test
+## Deployments
+
+| Network | Chain ID | Address |
+|---|---|---|
+| Monad testnet | 10143 | [`0x1001b9A1c69E513F7D463e3578bDeE7B94295919`](https://testnet.monadexplorer.com/address/0x1001b9A1c69E513F7D463e3578bDeE7B94295919) |
+
+The testnet deployment was made when the contract was still named `PenguinRegistry`. The
+ABI and event signature are identical; only the Solidity identifiers and revert-string
+prefixes were renamed.
+
+## Development
+
+```bash
+git submodule update --init          # forge-std
+forge build
+forge test -vvv
+forge fmt --check
 ```
 
-### Format
+Deploy (keystore account, never a raw private key):
 
-```shell
-$ forge fmt
+```bash
+forge script script/Deploy.s.sol \
+  --rpc-url https://testnet-rpc.monad.xyz \
+  --account monad-deployer \
+  --broadcast
 ```
 
-### Gas Snapshots
-
-```shell
-$ forge snapshot
-```
-
-### Anvil
-
-```shell
-$ anvil
-```
-
-### Deploy
-
-```shell
-$ forge script script/Counter.s.sol:CounterScript --rpc-url <your_rpc_url> --private-key <your_private_key>
-```
-
-### Cast
-
-```shell
-$ cast <subcommand>
-```
-
-### Help
-
-```shell
-$ forge --help
-$ anvil --help
-$ cast --help
-```
+Then set `MONAD_REGISTRY_ADDRESS` and `NEXT_PUBLIC_MONAD_REGISTRY_ADDRESS` in `apps/web/.env`.

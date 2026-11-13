@@ -1,7 +1,9 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.24;
 
-/// @title PenguinRegistry — Argus on-chain decision record (ONCHAIN.md §2)
+/// @title ArgusRegistry — Argus on-chain decision record (ONCHAIN.md §2)
+/// @notice Formerly named PenguinRegistry (hackathon prototype). The ABI and
+///         event signature are unchanged, so existing deployments remain valid.
 ///
 /// Minimal, record-only contract: accepts a decision payload, emits an event,
 /// never custodies funds, never gatekeeps (AGENTS.md §4.3, §9).
@@ -14,7 +16,7 @@ pragma solidity ^0.8.24;
 ///
 /// Confidence is stored as basis points (0–10000) to preserve one decimal place
 /// of precision without floating point (e.g., 70.00% → 7000 bps).
-contract PenguinRegistry {
+contract ArgusRegistry {
     // -------------------------------------------------------------------------
     // Events
     // -------------------------------------------------------------------------
@@ -66,9 +68,9 @@ contract PenguinRegistry {
         bytes32 promptVersionHash,
         uint256 timestamp
     ) external {
-        require(confidence <= 10_000, "PenguinRegistry: confidence exceeds 10000 bps");
-        require(bytes(asset).length > 0, "PenguinRegistry: asset must not be empty");
-        require(bytes(decision).length > 0, "PenguinRegistry: decision must not be empty");
+        require(confidence <= 10_000, "ArgusRegistry: confidence exceeds 10000 bps");
+        require(bytes(asset).length > 0, "ArgusRegistry: asset must not be empty");
+        require(bytes(decision).length > 0, "ArgusRegistry: decision must not be empty");
 
         emit DecisionRecorded(asset, decision, confidence, dataSnapshotHash, promptVersionHash, timestamp, msg.sender);
     }
