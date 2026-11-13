@@ -2,12 +2,25 @@
 
 import type {
   AgentPersona,
+  AgentRunResult,
   AgentVote,
   MarketDataSnapshot,
   VoteDirection,
 } from "@argus/shared-types";
 
-export type { AgentPersona, AgentVote, MarketDataSnapshot, VoteDirection };
+export type { AgentPersona, AgentRunResult, AgentVote, MarketDataSnapshot, VoteDirection };
 export { AGENT_ROSTER } from "./roster";
-export { runAgentPersona, runSyndicate } from "./runner";
+export {
+  runAgentPersona,
+  runAgentDetailed,
+  runSyndicate,
+  runSyndicateDetailed,
+  getPromptText,
+  promptVersionOf,
+  hashPrompt,
+} from "./runner";
 export type { RunAgentOptions, RunSyndicateOptions } from "./runner";
+export { validateAgentOutput } from "./validate";
+export type { ValidAgentOutput, ValidationResult } from "./validate";
+export { resolveProviders } from "./providers";
+export type { ProviderConfig, ProviderName } from "./providers";

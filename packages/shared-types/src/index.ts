@@ -54,7 +54,49 @@ export interface AgentVote {
    */
   modelUsed: string;
 
-  // TODO: Log temperature / seed params used per decision for reproducibility (AGENTS.md §5.2).
+  /**
+   * sha256 of the exact prompt text that produced this vote. Lets a third
+   * party confirm the prompt file at `promptVersion` was not edited in place.
+   */
+  promptHash?: string;
+
+  /** Generation parameters, logged for reproducibility (AGENTS.md §5.2). */
+  params?: AgentGenerationParams;
+}
+
+export interface AgentGenerationParams {
+  provider: string;
+  temperature: number;
+  seed?: number;
+}
+
+/**
+ * Outcome of a single agent in a syndicate round.
+ *
+ * - `ok`        — produced a schema-valid vote
+ * - `failed`    — every provider/attempt failed or returned invalid output
+ * - `abstained` — a required data dependency was missing, so the agent was
+ *                 not asked to guess (AGENTS.md §2 principle 5)
+ */
+export type AgentRunStatus = 'ok' | 'failed' | 'abstained';
+
+/** One raw LLM call, kept for audit/debugging even when malformed (§5.3). */
+export interface AgentAttempt {
+  provider: string;
+  model: string;
+  httpStatus: number | null;
+  rawResponse: string | null;
+  error: string | null;
+  latencyMs: number;
+}
+
+export interface AgentRunResult {
+  agentId: string;
+  status: AgentRunStatus;
+  vote: AgentVote | null;
+  /** Human-readable reason when status is not `ok`. */
+  error?: string;
+  attempts: AgentAttempt[];
 }
 
 /**
