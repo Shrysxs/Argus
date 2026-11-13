@@ -70,14 +70,6 @@ contract PenguinRegistry {
         require(bytes(asset).length > 0, "PenguinRegistry: asset must not be empty");
         require(bytes(decision).length > 0, "PenguinRegistry: decision must not be empty");
 
-        emit DecisionRecorded(
-            asset,
-            decision,
-            confidence,
-            dataSnapshotHash,
-            promptVersionHash,
-            timestamp,
-            msg.sender
-        );
+        emit DecisionRecorded(asset, decision, confidence, dataSnapshotHash, promptVersionHash, timestamp, msg.sender);
     }
 }

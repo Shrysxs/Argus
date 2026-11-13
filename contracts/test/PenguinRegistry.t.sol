@@ -9,10 +9,8 @@ contract PenguinRegistryTest is Test {
     PenguinRegistry public registry;
 
     // Fixed test data
-    bytes32 constant DATA_HASH =
-        0xabcdef1234567890abcdef1234567890abcdef1234567890abcdef1234567890;
-    bytes32 constant PROMPT_HASH =
-        0x1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef;
+    bytes32 constant DATA_HASH = 0xabcdef1234567890abcdef1234567890abcdef1234567890abcdef1234567890;
+    bytes32 constant PROMPT_HASH = 0x1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef;
     uint256 constant TIMESTAMP = 1_720_000_000;
 
     function setUp() public {
@@ -29,9 +27,7 @@ contract PenguinRegistryTest is Test {
 
     function test_noStateAfterDeploy() public {
         vm.expectEmit(true, false, false, true);
-        emit PenguinRegistry.DecisionRecorded(
-            "BTC", "BUY", 7000, DATA_HASH, PROMPT_HASH, TIMESTAMP, address(this)
-        );
+        emit PenguinRegistry.DecisionRecorded("BTC", "BUY", 7000, DATA_HASH, PROMPT_HASH, TIMESTAMP, address(this));
         registry.recordDecision("BTC", "BUY", 7000, DATA_HASH, PROMPT_HASH, TIMESTAMP);
     }
 
@@ -41,25 +37,19 @@ contract PenguinRegistryTest is Test {
 
     function test_emitsBuyDecision() public {
         vm.expectEmit(true, false, false, true);
-        emit PenguinRegistry.DecisionRecorded(
-            "BTC", "BUY", 8333, DATA_HASH, PROMPT_HASH, TIMESTAMP, address(this)
-        );
+        emit PenguinRegistry.DecisionRecorded("BTC", "BUY", 8333, DATA_HASH, PROMPT_HASH, TIMESTAMP, address(this));
         registry.recordDecision("BTC", "BUY", 8333, DATA_HASH, PROMPT_HASH, TIMESTAMP);
     }
 
     function test_emitsSellDecision() public {
         vm.expectEmit(true, false, false, true);
-        emit PenguinRegistry.DecisionRecorded(
-            "ETH", "SELL", 6000, DATA_HASH, PROMPT_HASH, TIMESTAMP, address(this)
-        );
+        emit PenguinRegistry.DecisionRecorded("ETH", "SELL", 6000, DATA_HASH, PROMPT_HASH, TIMESTAMP, address(this));
         registry.recordDecision("ETH", "SELL", 6000, DATA_HASH, PROMPT_HASH, TIMESTAMP);
     }
 
     function test_emitsHoldDecision() public {
         vm.expectEmit(true, false, false, true);
-        emit PenguinRegistry.DecisionRecorded(
-            "SOL", "HOLD", 5000, DATA_HASH, PROMPT_HASH, TIMESTAMP, address(this)
-        );
+        emit PenguinRegistry.DecisionRecorded("SOL", "HOLD", 5000, DATA_HASH, PROMPT_HASH, TIMESTAMP, address(this));
         registry.recordDecision("SOL", "HOLD", 5000, DATA_HASH, PROMPT_HASH, TIMESTAMP);
     }
 
@@ -112,16 +102,12 @@ contract PenguinRegistryTest is Test {
 
         vm.prank(alice);
         vm.expectEmit(true, false, false, true);
-        emit PenguinRegistry.DecisionRecorded(
-            "BTC", "BUY", 7000, DATA_HASH, PROMPT_HASH, TIMESTAMP, alice
-        );
+        emit PenguinRegistry.DecisionRecorded("BTC", "BUY", 7000, DATA_HASH, PROMPT_HASH, TIMESTAMP, alice);
         registry.recordDecision("BTC", "BUY", 7000, DATA_HASH, PROMPT_HASH, TIMESTAMP);
 
         vm.prank(bob);
         vm.expectEmit(true, false, false, true);
-        emit PenguinRegistry.DecisionRecorded(
-            "BTC", "SELL", 4500, DATA_HASH, PROMPT_HASH, TIMESTAMP, bob
-        );
+        emit PenguinRegistry.DecisionRecorded("BTC", "SELL", 4500, DATA_HASH, PROMPT_HASH, TIMESTAMP, bob);
         registry.recordDecision("BTC", "SELL", 4500, DATA_HASH, PROMPT_HASH, TIMESTAMP);
     }
 
@@ -131,17 +117,13 @@ contract PenguinRegistryTest is Test {
 
     function test_confidenceZeroIsValid() public {
         vm.expectEmit(true, false, false, true);
-        emit PenguinRegistry.DecisionRecorded(
-            "BTC", "HOLD", 0, DATA_HASH, PROMPT_HASH, TIMESTAMP, address(this)
-        );
+        emit PenguinRegistry.DecisionRecorded("BTC", "HOLD", 0, DATA_HASH, PROMPT_HASH, TIMESTAMP, address(this));
         registry.recordDecision("BTC", "HOLD", 0, DATA_HASH, PROMPT_HASH, TIMESTAMP);
     }
 
     function test_confidenceMaxIsValid() public {
         vm.expectEmit(true, false, false, true);
-        emit PenguinRegistry.DecisionRecorded(
-            "BTC", "BUY", 10_000, DATA_HASH, PROMPT_HASH, TIMESTAMP, address(this)
-        );
+        emit PenguinRegistry.DecisionRecorded("BTC", "BUY", 10_000, DATA_HASH, PROMPT_HASH, TIMESTAMP, address(this));
         registry.recordDecision("BTC", "BUY", 10_000, DATA_HASH, PROMPT_HASH, TIMESTAMP);
     }
 
@@ -170,9 +152,7 @@ contract PenguinRegistryTest is Test {
 
     function test_zeroHashesAreAccepted() public {
         vm.expectEmit(true, false, false, true);
-        emit PenguinRegistry.DecisionRecorded(
-            "BTC", "BUY", 7000, bytes32(0), bytes32(0), TIMESTAMP, address(this)
-        );
+        emit PenguinRegistry.DecisionRecorded("BTC", "BUY", 7000, bytes32(0), bytes32(0), TIMESTAMP, address(this));
         registry.recordDecision("BTC", "BUY", 7000, bytes32(0), bytes32(0), TIMESTAMP);
     }
 
@@ -210,9 +190,7 @@ contract PenguinRegistryTest is Test {
     // -------------------------------------------------------------------------
 
     function test_eventSelectorMatchesExpected() public {
-        bytes32 expectedSelector = keccak256(
-            "DecisionRecorded(string,string,uint256,bytes32,bytes32,uint256,address)"
-        );
+        bytes32 expectedSelector = keccak256("DecisionRecorded(string,string,uint256,bytes32,bytes32,uint256,address)");
         vm.recordLogs();
         registry.recordDecision("BTC", "BUY", 7000, DATA_HASH, PROMPT_HASH, TIMESTAMP);
         Vm.Log[] memory logs = vm.getRecordedLogs();
