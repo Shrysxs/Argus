@@ -67,19 +67,19 @@ describe("Rate Limiter", () => {
   const loginKey = "login:127.0.0.1:test@example.com";
   const signupKey = "signup:127.0.0.1";
 
-  beforeEach(() => {
-    resetRateLimit(loginKey);
-    resetRateLimit(signupKey);
+  beforeEach(async () => {
+    await resetRateLimit(loginKey);
+    await resetRateLimit(signupKey);
   });
 
-  test("allows initial attempts and blocks after exceeding limit", () => {
-    assert.strictEqual(checkRateLimit(loginKey).allowed, true);
+  test("allows initial attempts and blocks after exceeding limit", async () => {
+    assert.strictEqual((await checkRateLimit(loginKey)).allowed, true);
 
     for (let i = 0; i < 5; i++) {
-      recordFailedAttempt(loginKey);
+      await recordFailedAttempt(loginKey);
     }
 
-    const check = checkRateLimit(loginKey);
+    const check = await checkRateLimit(loginKey);
     assert.strictEqual(check.allowed, false);
     assert.ok((check.retryAfterSeconds ?? 0) > 0);
   });
@@ -133,7 +133,7 @@ describe("API Route Behavior & Enumeration Protection", () => {
 });
 
 import { db } from "../lib/db";
-import { createSession, getSessionUser, destroySession } from "../lib/auth/session";
+import { createSession, getSessionUser, destroySession, hashSessionToken } from "../lib/auth/session";
 
 describe("Authentication Integration & Session Cookie Flow (Real Database & Route Handlers)", () => {
   const testEmail = `test_auth_${Date.now()}@argus.io`;
@@ -206,7 +206,8 @@ describe("Authentication Integration & Session Cookie Flow (Real Database & Rout
     assert.ok(sessionId);
 
     // Verify session row exists in Prisma
-    const sessionRow = await db.session.findUnique({ where: { id: sessionId } });
+    const sessionRow = await db.session.findUnique({ where: { id: hashSessionToken(sessionId) } });
+    assert.notStrictEqual(sessionRow?.id, sessionId, "raw token must not be stored");
     assert.ok(sessionRow);
     assert.strictEqual(sessionRow.userId, dbUser.id);
 
@@ -217,7 +218,7 @@ describe("Authentication Integration & Session Cookie Flow (Real Database & Rout
 
     // Test session destruction
     await destroySession(sessionId);
-    const deletedSession = await db.session.findUnique({ where: { id: sessionId } });
+    const deletedSession = await db.session.findUnique({ where: { id: hashSessionToken(sessionId) } });
     assert.strictEqual(deletedSession, null);
 
     // Clean up test user from DB

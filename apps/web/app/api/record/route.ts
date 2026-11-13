@@ -28,14 +28,14 @@ export async function POST(req: Request) {
   }
 
   const rateLimitKey = `record:${user.id}`;
-  const limitCheck = checkRateLimit(rateLimitKey, RECORD_MAX_ATTEMPTS);
+  const limitCheck = await checkRateLimit(rateLimitKey, RECORD_MAX_ATTEMPTS);
   if (!limitCheck.allowed) {
     return NextResponse.json(
       { error: "Rate limit exceeded for on-chain recording. Please try again later.", retryAfterSeconds: limitCheck.retryAfterSeconds },
       { status: 429 },
     );
   }
-  recordFailedAttempt(rateLimitKey);
+  await recordFailedAttempt(rateLimitKey);
 
   const body = (await req.json().catch(() => null)) as { id?: unknown; txHash?: unknown } | null;
   const id = typeof body?.id === "string" ? body.id.trim() : "";

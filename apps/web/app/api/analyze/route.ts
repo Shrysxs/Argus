@@ -31,14 +31,14 @@ export async function POST(req: Request) {
   }
 
   const rateLimitKey = `analyze:${user.id}`;
-  const limitCheck = checkRateLimit(rateLimitKey);
+  const limitCheck = await checkRateLimit(rateLimitKey);
   if (!limitCheck.allowed) {
     return NextResponse.json(
       { error: "Rate limit exceeded for analysis runs. Please try again later.", retryAfterSeconds: limitCheck.retryAfterSeconds },
       { status: 429, headers: { "Retry-After": String(limitCheck.retryAfterSeconds ?? 60) } },
     );
   }
-  recordFailedAttempt(rateLimitKey);
+  await recordFailedAttempt(rateLimitKey);
 
   const body = await req.json().catch(() => ({}));
   const asset = (typeof body.asset === "string" ? body.asset.trim() : "").toUpperCase() || "BTC";

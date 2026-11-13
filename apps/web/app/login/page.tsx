@@ -1,13 +1,15 @@
 "use client";
 
-import { useState } from "react";
+import { Suspense, useState } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
+import { safeNextPath } from "@/lib/safe-redirect";
 
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
-export default function LoginPage() {
+function LoginPageForm() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
@@ -52,7 +54,7 @@ export default function LoginPage() {
         return;
       }
 
-      router.push("/syndicate");
+      router.push(safeNextPath(searchParams.get("next")));
       router.refresh();
     } catch {
       setError("An unexpected network error occurred.");
@@ -64,7 +66,7 @@ export default function LoginPage() {
   return (
     <div className="flex flex-col ">
 
-      <main className="flex flex-1 flex-col items-center justify-center px-4 py-16 sm:px-6">
+      <div className="flex flex-1 flex-col items-center justify-center px-4 py-16 sm:px-6">
         <div className="w-full max-w-md rounded-sm border border-border bg-surface p-6 sm:p-8">
           <div className="text-left">
             <h1 className="text-3xl font-serif font-bold tracking-tight text-foreground">Welcome back.</h1>
@@ -161,7 +163,15 @@ export default function LoginPage() {
             </Link>
           </p>
         </div>
-      </main>
+      </div>
     </div>
+  );
+}
+
+export default function LoginPage() {
+  return (
+    <Suspense>
+      <LoginPageForm />
+    </Suspense>
   );
 }

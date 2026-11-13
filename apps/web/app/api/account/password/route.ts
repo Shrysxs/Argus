@@ -11,7 +11,7 @@ export async function POST(req: Request) {
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const key = `password:${user.id}`;
-  const limit = checkRateLimit(key);
+  const limit = await checkRateLimit(key);
   if (!limit.allowed) {
     return NextResponse.json({ error: "Too many attempts. Try again later." }, { status: 429 });
   }
@@ -25,7 +25,7 @@ export async function POST(req: Request) {
 
   const row = await db.user.findUnique({ where: { id: user.id }, select: { passwordHash: true } });
   if (!row || !(await verifyPassword(row.passwordHash, body.currentPassword))) {
-    recordFailedAttempt(key);
+    await recordFailedAttempt(key);
     return NextResponse.json({ error: "Current password is incorrect." }, { status: 403 });
   }
 

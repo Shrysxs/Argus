@@ -11,7 +11,7 @@ export async function POST(request: Request) {
     const clientIp = request.headers.get("x-forwarded-for")?.split(",")[0] ?? "127.0.0.1";
     const rateLimitKey = `signup:${clientIp}`;
 
-    const rateCheck = checkRateLimit(rateLimitKey);
+    const rateCheck = await checkRateLimit(rateLimitKey);
     if (!rateCheck.allowed) {
       return NextResponse.json(
         { error: `Too many signup attempts. Please try again in ${rateCheck.retryAfterSeconds} seconds.` },
@@ -21,7 +21,7 @@ export async function POST(request: Request) {
 
     const body = await request.json().catch(() => null);
     if (!body || typeof body !== "object") {
-      recordFailedAttempt(rateLimitKey);
+      await recordFailedAttempt(rateLimitKey);
       return NextResponse.json({ error: "Invalid JSON payload." }, { status: 400 });
     }
 
@@ -29,13 +29,13 @@ export async function POST(request: Request) {
 
     const emailCheck = validateEmail(email);
     if (!emailCheck.valid) {
-      recordFailedAttempt(rateLimitKey);
+      await recordFailedAttempt(rateLimitKey);
       return NextResponse.json({ error: emailCheck.error }, { status: 400 });
     }
 
     const passwordCheck = validatePassword(password);
     if (!passwordCheck.valid) {
-      recordFailedAttempt(rateLimitKey);
+      await recordFailedAttempt(rateLimitKey);
       return NextResponse.json({ error: passwordCheck.error }, { status: 400 });
     }
 
@@ -46,7 +46,7 @@ export async function POST(request: Request) {
     });
 
     if (existingUser) {
-      recordFailedAttempt(rateLimitKey);
+      await recordFailedAttempt(rateLimitKey);
       return NextResponse.json({ error: "Email is already registered." }, { status: 409 });
     }
 

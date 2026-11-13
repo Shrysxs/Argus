@@ -76,7 +76,7 @@ describe("POST /api/record", () => {
     await db.analyzeResult.deleteMany({ where: { userId: { in: [userId, otherUserId] } } });
     adapter = new FakeAdapter();
     setChainAdapterForTests(adapter);
-    resetRateLimit(`record:${userId}`);
+    await resetRateLimit(`record:${userId}`);
   });
 
   after(() => setChainAdapterForTests(null));

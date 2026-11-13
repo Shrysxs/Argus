@@ -20,7 +20,7 @@ export async function POST(request: Request) {
     const clientIp = request.headers.get("x-forwarded-for")?.split(",")[0] ?? "127.0.0.1";
     const rateLimitKey = `login:${clientIp}:${normalizedEmail}`;
 
-    const rateCheck = checkRateLimit(rateLimitKey);
+    const rateCheck = await checkRateLimit(rateLimitKey);
     if (!rateCheck.allowed) {
       return NextResponse.json(
         { error: `Too many login attempts. Please try again in ${rateCheck.retryAfterSeconds} seconds.` },
@@ -33,17 +33,17 @@ export async function POST(request: Request) {
     });
 
     if (!user) {
-      recordFailedAttempt(rateLimitKey);
+      await recordFailedAttempt(rateLimitKey);
       return NextResponse.json({ error: "Invalid email or password." }, { status: 401 });
     }
 
     const isValidPassword = await verifyPassword(user.passwordHash, password);
     if (!isValidPassword) {
-      recordFailedAttempt(rateLimitKey);
+      await recordFailedAttempt(rateLimitKey);
       return NextResponse.json({ error: "Invalid email or password." }, { status: 401 });
     }
 
-    resetRateLimit(rateLimitKey);
+    await resetRateLimit(rateLimitKey);
     await createSession(user.id);
 
     return NextResponse.json({
