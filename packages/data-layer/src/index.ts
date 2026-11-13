@@ -5,6 +5,8 @@ export { fetchSentiment } from "./fetchers/sentiment";
 export { fetchSentimentFallback } from "./fetchers/sentiment-fallback";
 export { fetchOnchainMetrics } from "./fetchers/onchain-metrics";
 export { fetchPriceHistory, fetchPriceHistoryFallback, HISTORY_DAYS } from "./fetchers/history";
+export { fetchPriceAt } from "./fetchers/price-at";
+export type { HistoricalPrice } from "./fetchers/price-at";
 export {
   computeTechnicals,
   sma,

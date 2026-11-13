@@ -7,7 +7,8 @@ import { getSessionUser } from "@/lib/auth/session";
 import { getDecision } from "@/lib/decisions";
 import { buildSealPayload, isSealable } from "@/lib/analysis/seal-payload";
 import { publicChainConfig } from "@/lib/chain-public";
-import { formatDateTime, shortAddress } from "@/lib/format";
+import { formatDateTime, formatPct, formatUsd, shortAddress } from "@/lib/format";
+import { OUTCOME_HORIZON_DAYS } from "@/lib/outcomes";
 import { PageContainer } from "@/components/page-header";
 import { AgentCard } from "@/components/agent-card";
 import { ConsensusBar } from "@/components/consensus-bar";
@@ -158,6 +159,39 @@ export default async function DecisionPage({ params }: Props) {
               {d.disagreement && d.recommendation !== "NONE" ? " · split committee" : ""}
             </p>
           </section>
+
+          {d.sealed && (
+            <section className="rounded-md border border-border bg-surface p-5">
+              <h2 className="mb-2 font-mono text-[10px] uppercase tracking-widest text-brass">Outcome</h2>
+              {d.outcome ? (
+                <dl className="divide-y divide-border">
+                  <Field label="Result">
+                    <span className={`font-mono text-xs font-semibold ${d.outcome.correct ? "text-success" : "text-destructive"}`}>
+                      {d.outcome.correct ? "✓ Correct" : "✗ Wrong"}
+                    </span>
+                  </Field>
+                  <Field label={`${d.outcome.horizonDays}-day return`}>
+                    <span className="tabular font-mono text-xs">{formatPct(d.outcome.returnPct, 2, true)}</span>
+                  </Field>
+                  <Field label="Entry → exit">
+                    <span className="tabular font-mono text-xs">
+                      {formatUsd(d.outcome.entryPrice)} → {formatUsd(d.outcome.exitPrice)}
+                    </span>
+                  </Field>
+                  <Field label="Market moved">
+                    <span className="font-mono text-xs">
+                      {d.outcome.realizedDirection === "BUY" ? "Up" : d.outcome.realizedDirection === "SELL" ? "Down" : "Flat"} (±
+                      {d.outcome.flatBandPct}% band)
+                    </span>
+                  </Field>
+                </dl>
+              ) : (
+                <p className="text-xs text-muted-foreground">
+                  Scored automatically {OUTCOME_HORIZON_DAYS} days after the decision against the realized price move.
+                </p>
+              )}
+            </section>
+          )}
 
           <section className="rounded-md border border-border bg-surface p-5">
             <h2 className="mb-2 font-mono text-[10px] uppercase tracking-widest text-brass">On-chain record</h2>

@@ -64,6 +64,7 @@ model AnalyzeResult {
   signerAddress     String?           @map("signer_address")
   createdAt         DateTime          @default(now()) @map("created_at")
   agentVotes        AgentVoteRecord[]
+  outcome           DecisionOutcome?
 
   @@index([userId, createdAt(sort: Desc)])
   @@index([sealed, sealedAt(sort: Desc)])
@@ -113,4 +114,24 @@ model AgentVoteRecord {
   @@index([analyzeResultId])
   @@index([agentId, createdAt])
   @@map("agent_votes")
+}
+
+/// Realized result of a sealed decision once its horizon has passed.
+model DecisionOutcome {
+  analyzeResultId   String        @id @map("analyze_result_id")
+  analyzeResult     AnalyzeResult @relation(fields: [analyzeResultId], references: [id], onDelete: Cascade)
+  horizonDays       Int           @map("horizon_days")
+  flatBandPct       Float         @map("flat_band_pct")
+  entryPrice        Float         @map("entry_price")
+  exitPrice         Float         @map("exit_price")
+  exitPriceAt       DateTime      @map("exit_price_at")
+  returnPct         Float         @map("return_pct")
+  /// BUY (up) | SELL (down) | HOLD (flat)
+  realizedDirection String        @map("realized_direction")
+  correct           Boolean
+  source            String
+  scoredAt          DateTime      @default(now()) @map("scored_at")
+
+  @@index([scoredAt])
+  @@map("decision_outcomes")
 }

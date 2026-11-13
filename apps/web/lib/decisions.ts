@@ -30,6 +30,7 @@ export async function getDecision(id: string, viewerId: string | null) {
     select: {
       ...PUBLIC_SELECT,
       snapshot: { select: { id: true, hash: true, data: true, canonical: true, sources: true, capturedAt: true } },
+      outcome: true,
       agentVotes: {
         orderBy: { agentId: "asc" },
         select: {
@@ -84,6 +85,7 @@ export async function listSealedDecisions({ page = 1, pageSize = 20, asset }: Li
         sealedAt: true,
         sealedBy: true,
         createdAt: true,
+        outcome: { select: { correct: true, returnPct: true } },
       },
     }),
     db.analyzeResult.count({ where }),

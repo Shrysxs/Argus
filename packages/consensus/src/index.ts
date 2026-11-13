@@ -8,6 +8,16 @@ export type { ConsensusConfig } from "./engine";
 // §2 — Reputation Index
 export { computeReputation, DEFAULT_LAMBDA } from "./reputation";
 
+// Outcome scoring & track records (MATH.md §2 applied to realized outcomes)
+export {
+  realizedDirection,
+  isCallCorrect,
+  percentReturn,
+  summarizeTrackRecord,
+  DEFAULT_FLAT_BAND_PCT,
+} from "./outcome";
+export type { ScoredCall, TrackRecord } from "./outcome";
+
 // §3 — Signal Information Value (entropy pricing)
 export { computeEntropy, computeInformationValue, computeSignalPrice, H_MAX } from "./entropy";
 

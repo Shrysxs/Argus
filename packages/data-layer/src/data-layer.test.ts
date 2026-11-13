@@ -10,6 +10,7 @@ import { resolveCoinId, getCoinUniverse, clearUniverseCache, STATIC_COINS_LIST }
 import { fetchSnapshot, snapshotCache, historyCache } from "./snapshot";
 import { sha256 } from "./hash";
 import { TtlCache } from "./cache";
+import { fetchPriceAt } from "./fetchers/price-at";
 import { DataFetchError, NotImplementedError } from "./errors";
 
 
@@ -395,5 +396,34 @@ describe("fetchSnapshot with history", () => {
     assert.match(snap.unavailable!.technicals!, /both failed/);
     assert.ok(snap.unavailable!.sentiment);
     assert.equal((snap.data as any).technicals, undefined);
+  });
+});
+
+describe("fetchPriceAt", () => {
+  const at = 1_700_000_000_000;
+  beforeEach(() => clearUniverseCache());
+
+  it("picks the CoinGecko point closest to the requested time", async () => {
+    const p = await fetchPriceAt(
+      "BTC",
+      at,
+      routedFetch({ "coins/list": [], "market_chart/range": { prices: [[at - 3_600_000, 100], [at + 600_000, 105], [at + 7_200_000, 110]] } }),
+    );
+    assert.equal(p.priceUsd, 105);
+    assert.equal(p.source, "coingecko/range");
+  });
+
+  it("falls back to CryptoCompare and rejects points too far away", async () => {
+    const p = await fetchPriceAt(
+      "BTC",
+      at,
+      routedFetch({ "coins/list": [], "market_chart/range": { prices: [[at - 86_400_000, 1]] }, histohour: { Data: { Data: [{ time: at / 1000, close: 99 }] } } }),
+    );
+    assert.equal(p.priceUsd, 99);
+    assert.equal(p.source, "cryptocompare/histohour");
+  });
+
+  it("refuses future timestamps", async () => {
+    await assert.rejects(() => fetchPriceAt("BTC", Date.now() + 60_000, routedFetch({})), /future/);
   });
 });
