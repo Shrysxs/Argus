@@ -94,12 +94,24 @@ npx prisma migrate resolve --applied 0_init
 npx prisma migrate deploy
 ```
 
-On Vercel, `apps/web` uses the `vercel-build` script, which runs `prisma migrate deploy` before `next build` for **production** deployments only (previews never migrate). Until the
-baseline above has been done, that build fails on purpose and Vercel keeps serving the previous deployment — it never
-ships code against an un-migrated database.
+### Deploying on Vercel
 
-Note: migration `6_hashed_session_tokens` signs everyone out once, and `5_credits_cents_ledger` converts balances to
-integer cents with an opening-balance ledger entry per user.
+`apps/web` builds with [`scripts/vercel-build.sh`](apps/web/scripts/vercel-build.sh) (the `vercel-build` script):
+
+- **Production** deployments run `prisma migrate deploy` before `next build`. Until the baseline above has been done,
+  that build fails on purpose and Vercel keeps serving the previous deployment, so it never ships code against an
+  un-migrated database.
+- **Preview** deployments (feature branches, Dependabot PRs) skip migrations. They share the production database, so
+  migrating there would apply unreleased schema changes to production just by pushing a branch. A preview that needs
+  a new migration therefore won't work until that migration reaches production.
+
+### Migration notes
+
+| Migration | Effect |
+|---|---|
+| `5_credits_cents_ledger` | Converts balances to integer cents and adds an opening-balance ledger entry per user |
+| `6_hashed_session_tokens` | Signs everyone out once |
+| `7_enable_rls` | Enables row-level security with no policies on every table. This blocks Supabase's Data API (anon key) while Prisma, as table owner, is unaffected |
 
 ### Production checklist
 
@@ -135,8 +147,12 @@ migrations, builds the app, and runs Foundry fmt/build/test.
 | `GET /api/pricing/signal?id=:id` | Entropy-based information value quote (MATH.md §3) |
 | `GET /api/health` | Liveness / database readiness |
 
+Session (cookie) auth: `POST /api/auth/signup`, `POST /api/auth/login`, `POST /api/auth/logout`, `GET /api/auth/me`.
+
 Authenticated: `POST /api/analyze` (JSON or `Accept: text/event-stream`), `POST /api/record`, `/api/history`,
 `/api/billing/*`, `/api/account/*`.
+
+Cron (needs `CRON_SECRET`): `/api/cron/score-outcomes`.
 
 ## Repository layout
 
